@@ -918,7 +918,11 @@ async function ensureSkillsWorkingTreeRepo(repoUrl: string, branch: string): Pro
   try {
     const stashOutput = await runCommandWithOutput('git', ['stash', 'push', '--include-untracked', '-m', 'codex-skills-autostash'], { cwd: localDir })
     createdAutostash = !stashOutput.includes('No local changes to save')
-  } catch {}
+  } catch (error) {
+    if (hasLocalChangesBeforePull) {
+      throw new Error(`Refusing to reset skills repo because local changes could not be stashed first: ${getErrorMessage(error, 'git stash failed')}`)
+    }
+  }
   let pulledMtimes = new Map<string, number>()
   await runGitFetchWithRefLockRetry(localDir, ['fetch', 'origin', branch])
   await runCommand('git', ['reset', '--hard', `origin/${branch}`], { cwd: localDir })

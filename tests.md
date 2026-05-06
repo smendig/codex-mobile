@@ -405,6 +405,37 @@ Device Login shows an actionable message when GitHub rejects automatic private s
 
 ---
 
+### Skills sync refuses hard reset when local checkpoint fails
+
+#### Feature/Change Name
+Skills Sync aborts before `reset --hard` if local changes cannot be stashed first.
+
+#### Prerequisites/Setup
+1. Dev server running (`pnpm run dev --host 127.0.0.1 --port 5173`)
+2. GitHub Skills Sync is configured and connected
+3. `/Users/igor/.codex/skills` has a local tracked or untracked test edit
+4. A stash failure can be simulated in the skills repo
+5. Light theme and dark theme are available from the appearance switcher
+
+#### Steps
+1. In light theme, open `#/skills`.
+2. Create a local test edit under `/Users/igor/.codex/skills`.
+3. Simulate `git stash push --include-untracked` failure for the skills repo.
+4. Click `Pull` or `Startup Sync`.
+5. Confirm sync fails before any hard reset and the local test edit is still present.
+6. Switch to dark theme and repeat steps 1 through 5.
+
+#### Expected Results
+- Sync reports that local changes could not be stashed.
+- Sync does not run the hard reset path after the failed stash.
+- Local test edits remain recoverable in the skills repo.
+- The error panel remains readable in light theme and dark theme.
+
+#### Rollback/Cleanup
+- Remove the local test edit and clear the simulated stash failure.
+
+---
+
 ### Header Git branch dropdown with commit reset
 
 #### Feature/Change Name
