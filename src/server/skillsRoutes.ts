@@ -1090,12 +1090,10 @@ async function hasLocalUncommittedChanges(repoDir: string): Promise<boolean> {
 }
 
 async function hasCommittableWorkingTreeChanges(repoDir: string): Promise<boolean> {
-  try {
-    await runCommand('git', ['diff', '--quiet', '--exit-code', '--ignore-submodules=dirty'], { cwd: repoDir })
-    await runCommand('git', ['diff', '--cached', '--quiet', '--exit-code', '--ignore-submodules=dirty'], { cwd: repoDir })
-  } catch {
-    return true
-  }
+  const unstaged = (await runCommandWithOutput('git', ['diff', '--name-only', '--ignore-submodules=dirty'], { cwd: repoDir })).trim()
+  if (unstaged.length > 0) return true
+  const staged = (await runCommandWithOutput('git', ['diff', '--cached', '--name-only', '--ignore-submodules=dirty'], { cwd: repoDir })).trim()
+  if (staged.length > 0) return true
   const untracked = (await runCommandWithOutput('git', ['ls-files', '--others', '--exclude-standard'], { cwd: repoDir })).trim()
   return untracked.length > 0
 }
