@@ -1799,10 +1799,21 @@ export async function getAvailableModelIds(options: { includeProviderModels?: bo
 
 export async function getCurrentModelConfig(): Promise<CurrentModelConfig> {
   const payload = await callRpc<ConfigReadResponse>('config/read', {})
-  const model = payload.config.model ?? ''
-  const providerId = typeof payload.config.model_provider === 'string' ? payload.config.model_provider : ''
+  let model = payload.config.model ?? ''
+  let providerId = typeof payload.config.model_provider === 'string' ? payload.config.model_provider : ''
   const reasoningEffort = normalizeReasoningEffort(payload.config.model_reasoning_effort)
   const speedMode = normalizeSpeedMode(payload.config.service_tier)
+  if (!model || !providerId) {
+    try {
+      const freeModeStatus = await getFreeModeStatus()
+      if (freeModeStatus.enabled) {
+        if (!model) model = freeModeStatus.currentModel ?? ''
+        if (!providerId) providerId = freeModeStatus.provider ?? ''
+      }
+    } catch {
+      // Keep the app usable when free-mode status is unavailable.
+    }
+  }
   return { model, providerId, reasoningEffort, speedMode }
 }
 

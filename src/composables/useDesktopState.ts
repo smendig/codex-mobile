@@ -82,6 +82,7 @@ const COLLABORATION_MODE_STORAGE_KEY = 'codex-web-local.collaboration-mode-by-co
 const LEGACY_COLLABORATION_MODE_STORAGE_KEY = 'codex-web-local.collaboration-mode.v1'
 const NEW_THREAD_COLLABORATION_MODE_CONTEXT = '__new-thread__'
 const NEW_THREAD_PROVIDER_MODEL_CONTEXT_PREFIX = '__new-thread-provider__::'
+const THREAD_PROVIDER_MODEL_CONTEXT_PREFIX = '__thread-provider__::'
 const EVENT_SYNC_DEBOUNCE_MS = 220
 const BACKGROUND_THREAD_PAGINATION_DELAY_MS = 10_000
 const RATE_LIMIT_REFRESH_DEBOUNCE_MS = 500
@@ -182,6 +183,15 @@ function pruneThreadContextStateMap<T>(
   let changed = false
   const next = createStringKeyedRecord<T>()
   for (const [contextId, value] of Object.entries(stateMap)) {
+    if (contextId.startsWith(THREAD_PROVIDER_MODEL_CONTEXT_PREFIX)) {
+      const providerThreadId = readThreadIdFromProviderModelContextId(contextId)
+      if (providerThreadId && threadIds.has(providerThreadId)) {
+        next[contextId] = value
+        continue
+      }
+      changed = true
+      continue
+    }
     if (
       contextId === NEW_THREAD_COLLABORATION_MODE_CONTEXT
       || contextId.startsWith(NEW_THREAD_PROVIDER_MODEL_CONTEXT_PREFIX)
@@ -200,6 +210,11 @@ function normalizeProviderContextId(providerId: string): string {
   return normalized || 'codex'
 }
 
+function isCodexProviderContextId(providerId: string): boolean {
+  const normalizedProviderId = normalizeProviderContextId(providerId)
+  return normalizedProviderId === 'codex' || normalizedProviderId === 'openai'
+}
+
 function isNewThreadContextId(contextId: string): boolean {
   return contextId === NEW_THREAD_COLLABORATION_MODE_CONTEXT
 }
@@ -208,6 +223,22 @@ function toProviderModelContextId(providerId: string): string {
   const normalizedProviderId = normalizeProviderContextId(providerId)
   if (!normalizedProviderId) return ''
   return `${NEW_THREAD_PROVIDER_MODEL_CONTEXT_PREFIX}${normalizedProviderId}`
+}
+
+function toThreadProviderModelContextId(threadId: string, providerId: string): string {
+  const normalizedThreadId = threadId.trim()
+  if (!normalizedThreadId) return ''
+  const normalizedProviderId = normalizeProviderContextId(providerId)
+  if (!normalizedProviderId) return ''
+  return `${THREAD_PROVIDER_MODEL_CONTEXT_PREFIX}${normalizedProviderId}::${normalizedThreadId}`
+}
+
+function readThreadIdFromProviderModelContextId(contextId: string): string {
+  if (!contextId.startsWith(THREAD_PROVIDER_MODEL_CONTEXT_PREFIX)) return ''
+  const remainder = contextId.slice(THREAD_PROVIDER_MODEL_CONTEXT_PREFIX.length)
+  const separatorIndex = remainder.indexOf('::')
+  if (separatorIndex < 0) return ''
+  return remainder.slice(separatorIndex + 2).trim()
 }
 
 function toThreadContextId(threadId: string): string {
@@ -1544,12 +1575,21 @@ export function useDesktopState() {
 
   function readModelIdForThread(threadId: string): string {
     const contextId = toThreadContextId(threadId)
+    const providerContextId = toProviderModelContextId(activeProviderId.value)
     if (contextId === NEW_THREAD_COLLABORATION_MODE_CONTEXT) {
-      const providerContextId = toProviderModelContextId(activeProviderId.value)
       const providerModelId = providerContextId
         ? normalizeStoredModelId(selectedModelIdByContext.value[providerContextId])
         : ''
       if (providerModelId) return providerModelId
+    } else {
+      const providerThreadContextId = toThreadProviderModelContextId(contextId, activeProviderId.value)
+      const providerThreadModelId = providerThreadContextId
+        ? normalizeStoredModelId(selectedModelIdByContext.value[providerThreadContextId])
+        : ''
+      if (providerThreadModelId) return providerThreadModelId
+      if (!isCodexProviderContextId(activeProviderId.value)) {
+        return ''
+      }
     }
     return readSelectedModel(selectedModelIdByContext.value, threadId).trim()
   }
@@ -1584,12 +1624,17 @@ export function useDesktopState() {
   function setSelectedModelIdForThread(threadId: string, modelId: string): void {
     const normalizedModelId = modelId.trim()
     const contextId = toThreadContextId(threadId)
+    const isNewThreadContext = contextId === NEW_THREAD_COLLABORATION_MODE_CONTEXT
+    const providerScopedContextId = isNewThreadContext
+      ? toProviderModelContextId(activeProviderId.value)
+      : toThreadProviderModelContextId(contextId, activeProviderId.value)
+    const primaryContextId = providerScopedContextId || contextId
     if (normalizedModelId) {
       const nextModelMap = cloneStringKeyedRecord(selectedModelIdByContext.value)
-      nextModelMap[contextId] = normalizedModelId
+      nextModelMap[primaryContextId] = normalizedModelId
       selectedModelIdByContext.value = nextModelMap
     } else {
-      selectedModelIdByContext.value = omitStringKeyedRecordKey(selectedModelIdByContext.value, contextId)
+      selectedModelIdByContext.value = omitStringKeyedRecordKey(selectedModelIdByContext.value, primaryContextId)
     }
     if (threadId.trim() === selectedThreadId.value) {
       selectedModelId.value = readModelIdForThread(selectedThreadId.value)
@@ -1597,7 +1642,7 @@ export function useDesktopState() {
     } else {
       ensureAvailableModelIds(normalizedModelId)
     }
-    if (contextId === NEW_THREAD_COLLABORATION_MODE_CONTEXT) {
+    if (isNewThreadContext) {
       const providerContextId = toProviderModelContextId(activeProviderId.value)
       if (providerContextId) {
         if (normalizedModelId) {
@@ -1621,12 +1666,14 @@ export function useDesktopState() {
     if (!normalizedThreadId) return
 
     const normalizedModelId = modelId.trim()
+    const providerScopedContextId = toThreadProviderModelContextId(normalizedThreadId, activeProviderId.value)
+    const contextId = providerScopedContextId || normalizedThreadId
     if (normalizedModelId) {
       const nextModelMap = cloneStringKeyedRecord(selectedModelIdByContext.value)
-      nextModelMap[normalizedThreadId] = normalizedModelId
+      nextModelMap[contextId] = normalizedModelId
       selectedModelIdByContext.value = nextModelMap
     } else {
-      selectedModelIdByContext.value = omitStringKeyedRecordKey(selectedModelIdByContext.value, normalizedThreadId)
+      selectedModelIdByContext.value = omitStringKeyedRecordKey(selectedModelIdByContext.value, contextId)
     }
     ensureAvailableModelIds(normalizedModelId)
     if (selectedThreadId.value === normalizedThreadId) {
@@ -1838,10 +1885,12 @@ export function useDesktopState() {
         getCurrentModelConfig(),
       ])
 
-      const normalizedSelectedModelId = readModelIdForThread(selectedThreadId.value)
       const normalizedConfiguredModelId = currentConfig.model.trim()
       const normalizedProviderId = normalizeProviderContextId(currentConfig.providerId)
       activeProviderId.value = normalizedProviderId
+      const normalizedSelectedModelId = readModelIdForThread(selectedThreadId.value)
+      selectedModelId.value = normalizedSelectedModelId
+      ensureAvailableModelIds(normalizedSelectedModelId)
       const providerModelContextId = toProviderModelContextId(normalizedProviderId)
       const providerScopedModelId = providerModelContextId
         ? normalizeStoredModelId(selectedModelIdByContext.value[providerModelContextId])
@@ -1884,9 +1933,9 @@ export function useDesktopState() {
           setSelectedModelIdForThread(NEW_THREAD_COLLABORATION_MODE_CONTEXT, normalizedSelectedModelId)
         }
       }
-      if (providerModelContextId && selectedModelId.value.trim().length > 0) {
+      if (providerModelContextId && !providerScopedModelId && normalizedConfiguredModelId) {
         const nextModelMap = cloneStringKeyedRecord(selectedModelIdByContext.value)
-        nextModelMap[providerModelContextId] = selectedModelId.value.trim()
+        nextModelMap[providerModelContextId] = normalizedConfiguredModelId
         selectedModelIdByContext.value = nextModelMap
         saveSelectedModelMap(selectedModelIdByContext.value)
       }

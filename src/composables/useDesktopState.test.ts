@@ -421,6 +421,114 @@ describe('collaboration mode selection', () => {
   })
 })
 
+describe('model selection', () => {
+  it('stores existing-thread models per provider', async () => {
+    installTestWindow({
+      'codex-web-local.selected-thread-id.v1': 'thread-a',
+    })
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({
+      groups: [
+        {
+          projectName: 'project',
+          threads: [thread('thread-a', '/tmp/project')],
+        },
+      ],
+      nextCursor: null,
+    })
+    gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.5'])
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'gpt-5.5',
+      providerId: 'openai',
+      reasoningEffort: 'high',
+      speedMode: 'standard',
+    })
+    gatewayMocks.getAccountRateLimits.mockResolvedValue([])
+    gatewayMocks.getAvailableCollaborationModes.mockResolvedValue([])
+    gatewayMocks.getSkillsList.mockResolvedValue([])
+
+    const state = useDesktopState()
+
+    await state.refreshAll({ includeSelectedThreadMessages: false, awaitAncillaryRefreshes: true })
+
+    expect(state.readModelIdForThread('thread-a')).toBe('gpt-5.5')
+
+    gatewayMocks.getAvailableModelIds.mockResolvedValue(['big-pickle', 'zen-model'])
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'big-pickle',
+      providerId: 'opencode-zen',
+      reasoningEffort: 'high',
+      speedMode: 'standard',
+    })
+
+    await state.refreshAll({
+      includeSelectedThreadMessages: false,
+      awaitAncillaryRefreshes: true,
+      providerChanged: true,
+    })
+
+    expect(state.readModelIdForThread('thread-a')).toBe('big-pickle')
+
+    state.setSelectedModelIdForThread('thread-a', 'zen-model')
+
+    expect(state.readModelIdForThread('thread-a')).toBe('zen-model')
+
+    gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.5'])
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'gpt-5.5',
+      providerId: 'openai',
+      reasoningEffort: 'high',
+      speedMode: 'standard',
+    })
+
+    await state.refreshAll({
+      includeSelectedThreadMessages: false,
+      awaitAncillaryRefreshes: true,
+      providerChanged: true,
+    })
+
+    expect(state.readModelIdForThread('thread-a')).toBe('gpt-5.5')
+    expect(window.localStorage.setItem).toHaveBeenCalledWith(
+      'codex-web-local.selected-model-by-context.v1',
+      expect.stringContaining('__thread-provider__::opencode-zen::thread-a'),
+    )
+  })
+
+  it('does not fall back to a legacy thread model for a non-Codex provider on reload', async () => {
+    installTestWindow({
+      'codex-web-local.selected-thread-id.v1': 'thread-a',
+      'codex-web-local.selected-model-by-context.v1': JSON.stringify({
+        'thread-a': 'gpt-5.5',
+        '__new-thread-provider__::opencode-zen': 'big-pickle',
+      }),
+    })
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({
+      groups: [
+        {
+          projectName: 'project',
+          threads: [thread('thread-a', '/tmp/project')],
+        },
+      ],
+      nextCursor: null,
+    })
+    gatewayMocks.getAvailableModelIds.mockResolvedValue(['gpt-5.5', 'big-pickle'])
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'big-pickle',
+      providerId: 'opencode-zen',
+      reasoningEffort: 'high',
+      speedMode: 'standard',
+    })
+    gatewayMocks.getAccountRateLimits.mockResolvedValue([])
+    gatewayMocks.getAvailableCollaborationModes.mockResolvedValue([])
+    gatewayMocks.getSkillsList.mockResolvedValue([])
+
+    const state = useDesktopState()
+
+    await state.refreshAll({ includeSelectedThreadMessages: false, awaitAncillaryRefreshes: true })
+
+    expect(state.readModelIdForThread('thread-a')).toBe('big-pickle')
+  })
+})
+
 describe('findAdjacentThreadId', () => {
   it('selects the next thread after the archived thread', () => {
     const threads = [

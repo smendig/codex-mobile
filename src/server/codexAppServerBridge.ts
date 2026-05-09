@@ -27,6 +27,7 @@ import {
   createDefaultOpenCodeZenFreeModeState,
   getFreeModeConfigArgs,
   getFreeModeEnvVars,
+  OPENCODE_ZEN_DEFAULT_MODEL,
   shouldCreateDefaultFreeModeStateForMissingAuth,
   type FreeModeState,
 } from './freeMode.js'
@@ -5424,8 +5425,12 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
         const statePath = join(getCodexHomeDir(), FREE_MODE_STATE_FILE)
 
         function readFreeModeState(): FreeModeState {
-          return ensureDefaultFreeModeStateForMissingAuthSync(statePath)
+          const state = ensureDefaultFreeModeStateForMissingAuthSync(statePath)
             ?? { enabled: false, apiKey: null, model: FREE_MODE_DEFAULT_MODEL }
+          if (state.provider === 'opencode-zen' && !state.model?.trim()) {
+            return { ...state, model: OPENCODE_ZEN_DEFAULT_MODEL }
+          }
+          return state
         }
 
         if (req.method === 'POST' && url.pathname === '/codex-api/free-mode') {
@@ -5593,7 +5598,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
               ? (current.model || FREE_MODE_DEFAULT_MODEL)
               : providerType === 'custom'
                 ? await fetchCustomEndpointDefaultModel(baseUrl, resolvedKey)
-                : ''
+                : OPENCODE_ZEN_DEFAULT_MODEL
             const state: FreeModeState = {
               enabled: true,
               apiKey: resolvedKey,

@@ -271,6 +271,37 @@ This file tracks manual regression and feature verification steps.
 
 ---
 
+### Existing thread models are provider scoped
+
+#### Feature/Change Name
+Model selection is saved per existing thread and per active provider, so switching providers does not leak the previous provider's selected model into that thread.
+
+#### Prerequisites/Setup
+1. Dev server running (`pnpm run dev`)
+2. At least one existing thread is selected
+3. Codex and OpenCode Zen providers are available
+4. Light theme and dark theme both available from the appearance switcher
+
+#### Steps
+1. In light theme, select an existing thread.
+2. With Provider set to `Codex`, select a Codex model such as `GPT-5.5`.
+3. Open Settings and switch Provider to `OpenCode Zen`.
+4. Confirm the same thread's model dropdown changes to a Zen model such as `big-pickle`.
+5. Select another Zen model if available.
+6. Switch Provider back to `Codex`.
+7. Confirm the same thread's model dropdown restores the Codex model instead of keeping the Zen model.
+8. Switch to dark theme and repeat steps 1-7.
+
+#### Expected Results
+- Existing thread model selections are keyed by thread and provider.
+- New-thread provider-scoped model behavior remains unchanged.
+- Model dropdown labels and menus remain readable in light and dark themes.
+
+#### Rollback/Cleanup
+- Switch Provider/model settings back to the preferred defaults.
+
+---
+
 ### Startup avoids duplicate setup probes
 
 #### Feature/Change Name
