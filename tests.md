@@ -313,13 +313,14 @@ Switching the API provider from an existing thread keeps the user on that thread
 #### Steps
 1. In light theme, open an existing TestChat thread and note the `/thread/<id>` URL.
 2. Open Settings and switch Provider to `OpenCode Zen`.
-3. Confirm the URL remains on the same `/thread/<id>` route.
-4. Confirm the composer model changes to `big-pickle`.
-5. Send a short message and confirm the response appears in the same thread.
-6. Switch Provider back to `Codex`.
-7. Confirm the URL still remains on the same `/thread/<id>` route.
-8. Confirm the composer model changes to a Codex model and sending still works.
-9. Switch to dark theme and repeat steps 1-8.
+3. Confirm the URL remains on the same `/thread/<id>` route while the provider refresh is in progress.
+4. Confirm the composer controls are disabled during the refresh and do not expose the previous provider's model list.
+5. Confirm the composer model changes to `big-pickle`.
+6. Send a short message and confirm the response appears in the same thread.
+7. Switch Provider back to `Codex`.
+8. Confirm the URL still remains on the same `/thread/<id>` route.
+9. Confirm the composer immediately previews a Codex model instead of keeping `big-pickle`, then sending still works after refresh.
+10. Switch to dark theme and repeat steps 1-9.
 
 #### Expected Results
 - Provider switching does not navigate to the home/new-thread composer.
@@ -327,6 +328,7 @@ Switching the API provider from an existing thread keeps the user on that thread
 - The app resumes the selected thread against the newly selected provider before starting the next turn.
 - Messages sent after provider switching stay in the selected thread.
 - The composer model remains provider scoped for the selected thread.
+- The composer does not keep a stale model label or stale model menu visible while provider switching is still loading.
 
 #### Rollback/Cleanup
 - Switch Provider/model settings back to preferred defaults if needed.

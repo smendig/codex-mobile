@@ -777,6 +777,7 @@
                   :selected-reasoning-effort="selectedReasoningEffort"
                   :selected-speed-mode="selectedSpeedMode"
                   :is-updating-speed-mode="isUpdatingSpeedMode"
+                  :disabled="freeModeLoading"
                   :skills="installedSkills"
                   :thread-token-usage="selectedThreadTokenUsage"
                   :codex-quota="codexQuota"
@@ -851,6 +852,7 @@
                     :selected-reasoning-effort="selectedReasoningEffort"
                     :selected-speed-mode="selectedSpeedMode"
                     :is-updating-speed-mode="isUpdatingSpeedMode"
+                    :disabled="freeModeLoading"
                     :skills="installedSkills"
                     :thread-token-usage="selectedThreadTokenUsage"
                     :codex-quota="codexQuota"
@@ -1219,6 +1221,7 @@ const {
   steerQueuedMessage,
   setSelectedCollaborationMode,
   readModelIdForThread,
+  previewProviderModelSelection,
   setSelectedModelIdForThread,
 
   setSelectedReasoningEffort,
@@ -3634,10 +3637,12 @@ async function onProviderChange(provider: string): Promise<void> {
   try {
     if (provider === 'codex') {
       selectedProvider.value = 'codex'
+      previewProviderModelSelection(provider)
       const result = await withProviderSwitchTimeout(setFreeMode(false), 'Codex provider switch')
       freeModeEnabled.value = result.enabled
     } else if (provider === 'openrouter') {
       selectedProvider.value = 'openrouter'
+      previewProviderModelSelection(provider)
       const result = await withProviderSwitchTimeout(setFreeMode(true), 'OpenRouter provider switch')
       freeModeEnabled.value = result.enabled
       await withProviderSwitchTimeout(
@@ -3649,6 +3654,7 @@ async function onProviderChange(provider: string): Promise<void> {
       )
     } else if (provider === 'opencode-zen') {
       selectedProvider.value = 'opencode-zen'
+      previewProviderModelSelection(provider)
       await withProviderSwitchTimeout(
         setCustomProvider('', opencodeZenKey.value.trim(), {
           wireApi: 'chat',
@@ -3659,6 +3665,7 @@ async function onProviderChange(provider: string): Promise<void> {
       freeModeEnabled.value = true
     } else if (provider === 'custom') {
       selectedProvider.value = 'custom'
+      previewProviderModelSelection(provider)
       if (customEndpointUrl.value.trim() && customEndpointKey.value.trim()) {
         await withProviderSwitchTimeout(
           setCustomProvider(customEndpointUrl.value.trim(), customEndpointKey.value.trim(), {

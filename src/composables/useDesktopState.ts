@@ -1629,6 +1629,13 @@ export function useDesktopState() {
     shouldAutoScrollOnNextAgentEvent = false
   }
 
+  function previewProviderModelSelection(providerId: string): void {
+    activeProviderId.value = normalizeProviderContextId(providerId)
+    const nextSelectedModelId = readModelIdForThread(selectedThreadId.value).trim()
+    selectedModelId.value = nextSelectedModelId
+    availableModelIds.value = nextSelectedModelId ? [nextSelectedModelId] : []
+  }
+
   function setSelectedModelIdForThread(threadId: string, modelId: string): void {
     const normalizedModelId = modelId.trim()
     const contextId = toThreadContextId(threadId)
@@ -5462,6 +5469,7 @@ export function useDesktopState() {
     steerQueuedMessage,
     setSelectedCollaborationMode,
     readModelIdForThread,
+    previewProviderModelSelection,
     setSelectedModelIdForThread,
     setSelectedModelId,
 
