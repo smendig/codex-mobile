@@ -809,6 +809,7 @@ import type { ComponentPublicInstance } from 'vue'
 import {
   deleteThreadAutomation,
   getPinnedThreadState,
+  getThreadSummariesByIds,
   getThreadAutomationMap,
   persistPinnedThreadIds,
   runThreadAutomationNow,
@@ -914,6 +915,7 @@ const showChatsFirst = ref(loadBooleanStorage(CHATS_FIRST_STORAGE_KEY, false))
 const chatSortMode = ref<ChatSortMode>(loadChatSortMode())
 let hasLoadedPinnedThreadState = false
 const pinnedThreadIds = ref<string[]>([])
+const pinnedThreadFallbackById = ref<Record<string, UiThread>>({})
 const inlineDeleteConfirmThreadId = ref('')
 const optimisticallyArchivedThreadIds = ref<string[]>([])
 const openProjectMenuId = ref('')
@@ -1155,6 +1157,11 @@ const hasHiddenChatThreads = computed(() => {
 const threadById = computed(() => {
   const map = new Map<string, UiThread>()
 
+  for (const thread of Object.values(pinnedThreadFallbackById.value)) {
+    if (optimisticallyArchivedThreadIdSet.value.has(thread.id)) continue
+    map.set(thread.id, thread)
+  }
+
   for (const group of props.groups) {
     for (const thread of group.threads) {
       if (optimisticallyArchivedThreadIdSet.value.has(thread.id)) continue
@@ -1173,11 +1180,18 @@ watch(
   },
 )
 
-watch(threadById, (threadsById) => {
-  const filtered = pinnedThreadIds.value.filter((threadId) => threadsById.has(threadId))
-  if (filtered.length === pinnedThreadIds.value.length) return
-  pinnedThreadIds.value = filtered
-})
+async function hydratePinnedThreadFallbacks(threadIds: string[]): Promise<void> {
+  const missingThreadIds = threadIds.filter((threadId) => !threadById.value.has(threadId))
+  if (missingThreadIds.length === 0) return
+
+  const threads = await getThreadSummariesByIds(missingThreadIds)
+  if (threads.length === 0) return
+
+  pinnedThreadFallbackById.value = {
+    ...pinnedThreadFallbackById.value,
+    ...Object.fromEntries(threads.map((thread) => [thread.id, thread])),
+  }
+}
 
 onMounted(async () => {
   const { threadIds } = await getPinnedThreadState()
@@ -1190,6 +1204,7 @@ onMounted(async () => {
 
   if (normalized.length > 0) {
     pinnedThreadIds.value = normalized
+    await hydratePinnedThreadFallbacks(normalized)
   }
   try {
     automationByThreadId.value = await getThreadAutomationMap()

@@ -4956,3 +4956,30 @@ The sidebar Chats section lists the first 10 projectless chats, offers Show more
 
 #### Rollback/Cleanup
 - None.
+
+---
+
+### Pinned chats survive paginated thread list
+
+#### Feature/Change Name
+Pinned sidebar chats hydrate from their stored pinned ids even when they are older than the first `thread/list` page.
+
+#### Prerequisites/Setup
+1. Dev server running (`npm run dev -- --host 127.0.0.1 --port 5173` or equivalent)
+2. `.codex-global-state.json` contains `pinned-thread-ids` for chats that are not returned by the first recent `thread/list` page
+3. Light theme and dark theme both available from the appearance switcher
+
+#### Steps
+1. In light theme, open the app and expand the sidebar if it is collapsed.
+2. Confirm the `Pinned` section is visible above `Projects`.
+3. Confirm the pinned chat rows are visible even if those chat ids are absent from the first `thread/list` page.
+4. Refresh the browser tab and confirm the same pinned chat rows remain visible.
+5. Switch to dark theme and repeat steps 1-4.
+
+#### Expected Results
+- Stored pinned chat ids are not pruned just because they are absent from the current paginated thread list.
+- The sidebar hydrates missing pinned chat summaries and renders them in the `Pinned` section.
+- Pinned chat rows remain readable and selectable in light and dark themes.
+
+#### Rollback/Cleanup
+- None.

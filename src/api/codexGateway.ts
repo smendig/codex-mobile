@@ -50,6 +50,7 @@ import type {
   UiReviewWorkspaceView,
   UiRateLimitSnapshot,
   UiRateLimitWindow,
+  UiThread,
   UiThreadAutomation,
   UiThreadAutomationStatus,
 } from '../types/codex'
@@ -752,6 +753,31 @@ export async function getThreadGroupsPage(
   } catch (error) {
     throw normalizeCodexApiError(error, 'Failed to load thread groups', 'thread/list')
   }
+}
+
+export async function getThreadSummariesByIds(threadIds: string[]): Promise<UiThread[]> {
+  const normalizedThreadIds = threadIds
+    .map((threadId) => threadId.trim())
+    .filter((threadId, index, rows) => threadId.length > 0 && rows.indexOf(threadId) === index)
+
+  if (normalizedThreadIds.length === 0) return []
+
+  const summaries = await Promise.all(
+    normalizedThreadIds.map(async (threadId) => {
+      try {
+        const payload = await callRpc<ThreadReadResponse>('thread/read', {
+          threadId,
+          includeTurns: false,
+        })
+        const groups = normalizeThreadGroupsV2({ data: [payload.thread] } as ThreadListResponse)
+        return groups.flatMap((group) => group.threads)[0] ?? null
+      } catch {
+        return null
+      }
+    }),
+  )
+
+  return summaries.filter((thread): thread is UiThread => thread !== null)
 }
 
 export function getBackgroundThreadListLimit(): number {
