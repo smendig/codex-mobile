@@ -5172,7 +5172,12 @@ class MethodCatalog {
 
 type CodexBridgeMiddleware = ((req: IncomingMessage, res: ServerResponse, next: () => void) => Promise<void>) & {
   dispose: () => void
+  startBackgroundServices: () => void
   subscribeNotifications: (listener: (value: { method: string; params: unknown; atIso: string }) => void) => () => void
+}
+
+export type CodexBridgeOptions = {
+  startBackgroundServices?: boolean
 }
 
 type SharedBridgeState = {
@@ -5297,10 +5302,11 @@ async function buildThreadSearchIndex(appServer: AppServerProcess): Promise<Thre
   return { docsById }
 }
 
-export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
+export function createCodexBridgeMiddleware(options: CodexBridgeOptions = {}): CodexBridgeMiddleware {
   const { appServer, terminalManager, methodCatalog, telegramBridge, backendQueueProcessor } = getSharedBridgeState()
   let threadSearchIndex: ThreadSearchIndex | null = null
   let threadSearchIndexPromise: Promise<ThreadSearchIndex> | null = null
+  let backgroundServicesStarted = false
 
   async function getThreadSearchIndex(): Promise<ThreadSearchIndex> {
     if (threadSearchIndex) return threadSearchIndex
@@ -5316,15 +5322,23 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     }
     return threadSearchIndexPromise
   }
-  void initializeSkillsSyncOnStartup(appServer)
-  void readTelegramBridgeConfig()
-    .then((config) => {
-      if (!config.botToken) return
-      telegramBridge.configureToken(config.botToken)
-      telegramBridge.configureAllowedUserIds(config.allowedUserIds)
-      telegramBridge.start()
-    })
-    .catch(() => {})
+  function startBackgroundServices(): void {
+    if (backgroundServicesStarted) return
+    backgroundServicesStarted = true
+    void initializeSkillsSyncOnStartup(appServer)
+    void readTelegramBridgeConfig()
+      .then((config) => {
+        if (!config.botToken) return
+        telegramBridge.configureToken(config.botToken)
+        telegramBridge.configureAllowedUserIds(config.allowedUserIds)
+        telegramBridge.start()
+      })
+      .catch(() => {})
+  }
+
+  if (options.startBackgroundServices !== false) {
+    startBackgroundServices()
+  }
 
   const middleware = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const requestStartNs = process.hrtime.bigint()
@@ -7087,6 +7101,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
     backendQueueProcessor.dispose()
     appServer.dispose()
   }
+  middleware.startBackgroundServices = startBackgroundServices
   middleware.subscribeNotifications = (
     listener: (value: { method: string; params: unknown; atIso: string }) => void,
   ) => {

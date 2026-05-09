@@ -271,6 +271,35 @@ This file tracks manual regression and feature verification steps.
 
 ---
 
+### Qodo review fixes: automation dropdown dark theme and bridge startup ordering
+
+#### Feature/Change Name
+Automation ComposerDropdown controls use dark-theme overrides, and Codex bridge background services start only after the resolved web server port is recorded.
+
+#### Prerequisites/Setup
+1. Dev server running (`pnpm run dev`)
+2. Light theme and dark theme both available from the appearance switcher
+3. OpenCode Zen provider selected when validating server startup behavior
+
+#### Steps
+1. In light theme, open an automation creation/editing surface that shows schedule/status dropdowns.
+2. Confirm automation dropdown triggers match the surrounding light automation form styling.
+3. Switch to dark theme.
+4. Reopen the same automation surface and confirm dropdown triggers use dark backgrounds, dark borders, and readable text.
+5. Start the CLI server on an available port with OpenCode Zen free mode enabled.
+6. Confirm `/codex-api/free-mode/status` reports `provider: opencode-zen`.
+7. Trigger a background skills refresh or open Skills and confirm the app-server still uses the local proxy port instead of falling back to direct Zen `chat` wiring.
+
+#### Expected Results
+- Automation dropdown triggers are not light boxes inside dark theme.
+- Bridge background startup cannot spawn app-server before `CODEXUI_SERVER_PORT` is set.
+- Zen/custom proxy config receives the resolved web server port before startup-triggered app-server RPC calls.
+
+#### Rollback/Cleanup
+- Switch theme/provider settings back to preferred defaults if changed.
+
+---
+
 ### Existing thread models are provider scoped
 
 #### Feature/Change Name

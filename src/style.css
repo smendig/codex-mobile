@@ -291,6 +291,10 @@
   @apply text-zinc-400;
 }
 
+:root.dark .automation-thread-select .composer-dropdown-trigger,
+:root.dark .automation-schedule-unit .composer-dropdown-trigger {
+  @apply border-zinc-600 bg-zinc-800 text-zinc-100 focus:border-zinc-400;
+}
 
 :root.dark .composer-dropdown-menu {
   @apply border-zinc-600 bg-zinc-800;
