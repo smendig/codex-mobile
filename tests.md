@@ -4894,6 +4894,35 @@ Remaining app-native select controls were moved to `ComposerDropdown`, including
 
 ---
 
+### Android Zen app-server uses local proxy
+
+#### Feature/Change Name
+The CLI records the selected web server port before the Codex app-server bridge starts, so OpenCode Zen is configured through the local Responses proxy instead of direct unsupported `wire_api="chat"` config on newer Codex CLI builds.
+
+#### Prerequisites/Setup
+1. Android/proot environment has Codex CLI `0.129.0` or newer.
+2. Published Android package is installed or runnable with `npx codexui-android@latest`.
+3. Free mode state is set to OpenCode Zen with model `big-pickle`.
+
+#### Steps
+1. Start Android package on a fixed port, for example `npx --yes codexui-android@latest --port 18923 --no-password --no-tunnel`.
+2. Request `GET /codex-api/free-mode/status` and confirm provider is `opencode-zen`.
+3. Request `GET /codex-api/provider-models` and confirm `big-pickle` appears.
+4. Request `POST /codex-api/rpc` with body `{"method":"model/list","params":{}}`.
+5. Request `POST /codex-api/rpc` with body `{"method":"config/read","params":{}}`.
+6. Send `hi` through `/codex-api/zen-proxy/v1/responses` using model `big-pickle`.
+
+#### Expected Results
+- Android startup does not configure Codex app-server with direct `wire_api="chat"`.
+- `model/list` and `config/read` do not return `codex app-server exited unexpectedly`.
+- Zen proxy request returns HTTP 200 with assistant output.
+- Model dropdown can load because both the Codex RPC model list and provider model list are available.
+
+#### Rollback/Cleanup
+- Stop the Android `codexui-android` process for the fixed test port.
+
+---
+
 ### Worktree creation persists across refresh
 
 #### Feature/Change Name
