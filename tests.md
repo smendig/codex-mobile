@@ -4923,6 +4923,34 @@ The CLI records the selected web server port before the Codex app-server bridge 
 
 ---
 
+### Provider switch selects provider default model
+
+#### Feature/Change Name
+Changing the Provider dropdown refreshes the model list and selects the provider configured model before any stale provider-scoped composer model.
+
+#### Prerequisites/Setup
+1. Dev server running (`pnpm run dev`)
+2. Settings panel is available
+3. OpenCode Zen provider can fetch models
+
+#### Steps
+1. In light theme, set Provider to `Codex` and select `GPT-5.5` in the composer model dropdown.
+2. Open Settings and switch Provider to `OpenCode Zen`.
+3. Wait for settings/provider refresh to finish.
+4. Confirm the composer model dropdown changes away from `GPT-5.5` to the configured Zen model, normally `big-pickle`.
+5. Open the model dropdown and confirm Zen provider models are shown.
+6. Switch to dark theme and repeat steps 1-5.
+
+#### Expected Results
+- Provider switch does not keep the stale Codex `GPT-5.5` selection.
+- OpenCode Zen selects the configured/default model first.
+- The composer model dropdown remains readable and usable in light and dark themes.
+
+#### Rollback/Cleanup
+- Switch Provider back to the preferred default after testing.
+
+---
+
 ### Worktree creation persists across refresh
 
 #### Feature/Change Name

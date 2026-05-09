@@ -1859,10 +1859,10 @@ export function useDesktopState() {
       const currentModelInNewList = normalizedSelectedModelId && modelIds.includes(normalizedSelectedModelId)
       if (!normalizedSelectedModelId || !currentModelInNewList || options?.providerChanged) {
         if (options?.providerChanged && nextModelIds.length > 0) {
-          if (providerScopedModelId && nextModelIds.includes(providerScopedModelId)) {
-            setSelectedModelId(providerScopedModelId)
-          } else if (normalizedConfiguredModelId && nextModelIds.includes(normalizedConfiguredModelId)) {
+          if (normalizedConfiguredModelId && nextModelIds.includes(normalizedConfiguredModelId)) {
             setSelectedModelId(normalizedConfiguredModelId)
+          } else if (providerScopedModelId && nextModelIds.includes(providerScopedModelId)) {
+            setSelectedModelId(providerScopedModelId)
           } else {
             setSelectedModelId(nextModelIds[0])
           }
