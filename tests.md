@@ -66,7 +66,7 @@ This file tracks manual regression and feature verification steps.
 3. Click `Add automation…`.
 4. Fill name, prompt, RRULE schedule, and set status to `Paused`.
 5. Save the automation and reopen the same thread menu.
-6. Confirm the menu now shows `Manage automations…` and the thread row shows an automation chip.
+6. Confirm the menu now shows `Manage automations…` and the thread row shows an automation icon.
 7. Open `Manage automations…`, confirm the saved values are prefilled, then click `Add another automation`.
 8. Fill a second automation with a different name and RRULE, save it, and confirm both automations appear in the dialog list.
 9. Select each automation from the list and confirm its own prompt, RRULE, and status load independently.
@@ -84,11 +84,42 @@ This file tracks manual regression and feature verification steps.
 - Automation heartbeat prompts render as visible user-side cards labeled `Sent via automation`; raw heartbeat XML is not shown.
 - Manual runs use the existing thread queue, so they do not interrupt an active turn and run in order when the thread is available.
 - Removing one automation does not remove other automations attached to the same thread.
-- Removing the final automation removes the thread row automation chip and returns the menu to `Add automation…`.
+- Removing the final automation removes the thread row automation icon and returns the menu to `Add automation…`.
 - Light and dark theme automation manager surfaces remain readable.
 
 #### Rollback/Cleanup
 - Remove any test automations from the thread automation dialog or delete their folders under `$CODEX_HOME/automations/<automation-id>/`.
+
+### Feature: Automations panel
+
+#### Prerequisites
+- App is running from this repository.
+- At least one thread heartbeat automation or project cron automation exists.
+- Light and dark themes are both available from Settings.
+
+#### Steps
+1. In light theme, click `Automations` in the sidebar.
+2. Confirm the content header says `Automations` and the panel lists all thread heartbeat and project cron automations.
+3. Confirm each row shows an icon, automation name, target, active/paused status, and schedule summary.
+4. Select a row and confirm the detail panel shows status, schedule, target, id, and prompt.
+5. Click the row `Edit` button and confirm the existing automation editor opens with the selected automation values prefilled.
+6. Close the editor, select the same automation again, then click the detail-panel `Edit` button and confirm the same editor opens.
+7. Change the automation name or status, save, and confirm the Automations panel refreshes with the updated row.
+8. Refresh the panel and confirm the selected automation stays selected when it still exists.
+9. Open `#/automations?automationId=<existing-id>` directly and confirm that automation is selected.
+10. Create another active thread or project automation, refresh the Automations panel, and confirm the newly created active automation appears at the top of the active rows.
+11. Pause an automation and confirm it appears after active automations even if it was created more recently.
+12. Switch to dark theme and repeat steps 1-7.
+
+#### Expected Results
+- The panel combines heartbeat automations from `/codex-api/thread-automations` and project automations from `/codex-api/project-automations`.
+- Rows are sorted active first, then paused, with newest creation time first inside each status group, then newest update time, then automation name.
+- Row and detail edit buttons open the same existing thread/project automation editor, and saved edits refresh the panel list.
+- Thread targets use known thread titles when available; project targets use known project labels when available.
+- Empty, loading, refresh, and error states remain readable in light and dark themes.
+
+#### Rollback/Cleanup
+- Remove any temporary automations created for verification.
 
 ### Feature: Projectless new chat folders
 
@@ -271,32 +302,40 @@ This file tracks manual regression and feature verification steps.
 
 ---
 
-### Pinned threads remain visible during background pagination
+### Feature: Project automations from the sidebar project menu
 
 #### Feature/Change Name
-Pinned threads are no longer removed from the Pinned section while the sidebar is still loading older thread-list pages.
+Project rows can create and manage project-scoped cron automations using the same dialog style as thread heartbeat automations.
 
 #### Prerequisites/Setup
 1. Dev server running (`pnpm run dev`)
-2. More than 50 total unarchived threads exist
-3. At least one older thread outside the initial recent page is pinned
-4. Light theme and dark theme both available from the appearance switcher
+2. Sidebar contains at least one project folder row
+3. Light theme and dark theme both available from the appearance switcher
 
 #### Steps
-1. In light theme, reload the app.
-2. Immediately open the sidebar Pinned section.
-3. Confirm pinned rows from older history remain in the Pinned section after the initial thread list appears.
-4. Wait for background thread pagination to finish.
-5. Confirm the same pinned rows remain visible and can still be selected.
-6. Switch to dark theme and repeat steps 1-5.
+1. In light theme, open a project row dots menu for a project without an attached project automation.
+2. Confirm the menu shows `Add automation…` between `Browse files` and Git/project actions.
+3. Click `Add automation…`.
+4. Fill a name, prompt, daily or interval schedule, and status, then save.
+5. Inspect `$CODEX_HOME/automations/<automation-id>/automation.toml` and confirm the `cwds` entry is the resolved absolute project folder path, not only the sidebar display label.
+6. Reopen the same project menu and confirm it now shows `Manage automations…`.
+7. Confirm the project row shows an automation icon.
+8. Open `Manage automations…`, confirm the saved values are prefilled, then click `Add another automation`.
+9. Save a second project automation and confirm both records appear in the dialog list independently.
+10. Confirm the project row automation chip shows the bolt icon plus the visible count `2`.
+11. Repeat the same two-automation check on a chat thread and confirm the thread row chip shows the bolt icon plus the visible count `2`.
+12. Remove one project automation and confirm the project row chip returns to icon-only for one remaining automation.
+13. Remove the final project automation and confirm the project menu returns to `Add automation…` and the project row automation icon disappears.
+14. Switch to dark theme and repeat steps 1-11.
 
 #### Expected Results
-- Saved pinned thread IDs are preserved while only the initial thread-list page is loaded.
-- Missing pinned IDs are pruned only after the full thread list has loaded.
-- Pinned rows remain readable and selectable in both light and dark themes.
+- Project automations are stored as cron automations with `cwds = ["<absolute project path>"]`, including when the sidebar row displays only the project folder name.
+- Thread heartbeat automations remain scoped by `target_thread_id` and continue to use `Run now`.
+- Project automation dialogs use project-specific copy and do not show `Run now`.
+- The project menu, dialog list, inputs, schedule controls, status selector, automation icon, and multi-automation count badge remain readable in light and dark themes.
 
 #### Rollback/Cleanup
-- Unpin any disposable threads created only for this test.
+- Remove test project automations from the project automation dialog or delete their folders under `$CODEX_HOME/automations/<automation-id>/`.
 
 ---
 
@@ -1691,39 +1730,6 @@ Model, skill, thinking, and plan controls remain usable while a thread turn is i
 
 #### Rollback/Cleanup
 - If needed, run another sync pull/push to restore previous skill state in the sync repo.
-
-### Feature: Public shared skills pull overwrites only shared skills
-
-#### Prerequisites
-- App running from this repository with Skills Hub available.
-- GitHub skills sync is not configured/logged in.
-- Local shared skills directory exists at `~/.codex/skills/shared_skills`.
-
-#### Steps
-1. Create a temporary local-only skill folder under `~/.codex/skills/shared_skills`, or edit a tracked shared skill file in that directory.
-2. Note the parent `~/.codex/skills` status, including any unrelated local edits outside `shared_skills`.
-3. Open `Skills Hub`.
-4. Trigger `Pull` from the `Skills Sync (GitHub)` panel.
-5. Wait for the pull success toast.
-6. Inspect `~/.codex/skills/shared_skills` and compare it with the public `OpenClawAndroid/skills` `android` branch.
-7. Inspect `~/.codex/skills` and verify unrelated parent-level files were not reset or cleaned by the unauthenticated pull.
-8. If `~/.codex/skills/shared_skills/.git` is a git file or worktree/submodule-style pointer, repeat the pull and verify the nested repo is not reinitialized.
-9. Inspect the `/codex-api/skills-sync/pull` response and verify `data.synced` matches the number of direct shared skill folders with `SKILL.md`.
-10. In light theme, verify the Skills Hub list reloads and does not show stale local-only skills.
-11. Switch to dark theme and verify the same Skills Hub state remains readable and current.
-
-#### Expected Results
-- Public unauthenticated pull resets only the nested `shared_skills` repo to the public upstream `android` branch.
-- Local uncommitted edits and local-only untracked skill folders inside `shared_skills` are removed by the pull.
-- Parent-level `~/.codex/skills` files outside `shared_skills` are not reset or cleaned.
-- Existing git-file/worktree/submodule-style shared skills repos are reused, not reinitialized.
-- The pull response reports the shared skills count from `~/.codex/skills/shared_skills`, not the parent skills directory.
-- The installed skills list reloads immediately after the pull in both light and dark theme.
-- Private GitHub sync repos still preserve local edits through the bidirectional sync path.
-
-#### Rollback/Cleanup
-- Recreate any intentionally removed local-only shared skill if it should be kept.
-- Use private sync `Push` only after confirming the public pull result should be mirrored elsewhere.
 
 ### Feature: Force Refresh Skills button in Skills Sync panel
 
