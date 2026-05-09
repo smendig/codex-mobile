@@ -3297,6 +3297,7 @@ When switching providers, the model dropdown should only show models from the ne
 - No OpenRouter models (e.g., `openrouter/free`) appear in the list
 - Selected model auto-switches to the first Codex model
 - If the backend reports the Codex provider as `openai`, the composer still uses the `Codex` provider selection and shows a real Codex model, not the `Model` placeholder
+- Existing threads without a provider-thread model still show the active provider's saved/default model in the composer rather than the `Model` placeholder
 - Switching back to OpenRouter shows only OpenRouter models again
 
 #### Rollback/Cleanup

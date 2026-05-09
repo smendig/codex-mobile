@@ -1436,7 +1436,9 @@ const latestUserTurnId = computed(() => {
 })
 const liveOverlay = computed(() => selectedLiveOverlay.value)
 const composerThreadContextId = computed(() => (isHomeRoute.value ? '__new-thread__' : selectedThreadId.value))
-const composerSelectedModelId = computed(() => readModelIdForThread(composerThreadContextId.value))
+const composerSelectedModelId = computed(() => (
+  readModelIdForThread(composerThreadContextId.value).trim() || selectedModelId.value.trim()
+))
 const selectedThreadPendingRequest = computed<UiServerRequest | null>(() => {
   const rows = selectedThreadServerRequests.value
   return rows.length > 0 ? rows[rows.length - 1] : null
