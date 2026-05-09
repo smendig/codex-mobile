@@ -1676,6 +1676,12 @@ export function useDesktopState() {
     saveSelectedModelMap(selectedModelIdByContext.value)
   }
 
+  function setResumedThreadModelIdForActiveProvider(threadId: string, modelId: string): void {
+    const normalizedModelId = modelId.trim()
+    if (!normalizedModelId || !availableModelIds.value.includes(normalizedModelId)) return
+    setThreadModelId(threadId, normalizedModelId)
+  }
+
   function setThreadTokenUsage(threadId: string, usage: UiThreadTokenUsage | null): void {
     const normalizedThreadId = threadId.trim()
     if (!normalizedThreadId) return
@@ -4250,6 +4256,7 @@ export function useDesktopState() {
       const detail = resumedThread ?? await getThreadDetail(threadId)
 
       if (resumedThread) {
+        setResumedThreadModelIdForActiveProvider(threadId, resumedThread.model)
         resumedThreadById.value = {
           ...resumedThreadById.value,
           [threadId]: true,
@@ -4823,7 +4830,8 @@ export function useDesktopState() {
 
     try {
       if (resumedThreadById.value[threadId] !== true) {
-        await resumeThread(threadId)
+        const resumedThread = await resumeThread(threadId)
+        setResumedThreadModelIdForActiveProvider(threadId, resumedThread.model)
       }
       const modelId = readModelIdForActiveThreadSelection(threadId)
 

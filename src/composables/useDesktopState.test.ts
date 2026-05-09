@@ -714,6 +714,71 @@ describe('model selection', () => {
     )
   })
 
+  it('uses a resumed thread model when it belongs to the active provider list', async () => {
+    installTestWindow({
+      'codex-web-local.selected-thread-id.v1': 'thread-a',
+      'codex-web-local.selected-model-by-context.v1': JSON.stringify({
+        '__new-thread-provider__::openrouter': 'openrouter/free',
+      }),
+    })
+    gatewayMocks.getThreadGroupsPage.mockResolvedValue({
+      groups: [
+        {
+          projectName: 'project',
+          threads: [
+            thread('thread-a', '/tmp/project'),
+            thread('thread-b', '/tmp/project'),
+          ],
+        },
+      ],
+      nextCursor: null,
+    })
+    gatewayMocks.getAvailableModelIds.mockResolvedValue(['openrouter/free', 'openrouter/other'])
+    gatewayMocks.getCurrentModelConfig.mockResolvedValue({
+      model: 'openrouter/free',
+      providerId: 'openrouter',
+      reasoningEffort: 'high',
+      speedMode: 'standard',
+    })
+    gatewayMocks.getAccountRateLimits.mockResolvedValue([])
+    gatewayMocks.getAvailableCollaborationModes.mockResolvedValue([])
+    gatewayMocks.getSkillsList.mockResolvedValue([])
+    gatewayMocks.resumeThread.mockResolvedValue({
+      model: 'openrouter/other',
+      messages: [],
+      inProgress: false,
+      activeTurnId: '',
+      turnIndexByTurnId: {},
+    })
+    gatewayMocks.startThreadTurn.mockResolvedValue('turn-1')
+
+    const state = useDesktopState()
+
+    await state.refreshAll({ includeSelectedThreadMessages: false, awaitAncillaryRefreshes: true })
+    state.primeSelectedThread('thread-b')
+    await state.ensureThreadMessagesLoaded('thread-b')
+
+    expect(state.selectedModelId.value).toBe('openrouter/other')
+    expect(state.readModelIdForThread('thread-b')).toBe('openrouter/other')
+    expect(window.localStorage.setItem).toHaveBeenCalledWith(
+      'codex-web-local.selected-model-by-context.v1',
+      expect.stringContaining('__thread-provider__::openrouter::thread-b'),
+    )
+
+    await state.sendMessageToSelectedThread('hi')
+
+    expect(gatewayMocks.startThreadTurn).toHaveBeenCalledWith(
+      'thread-b',
+      'hi',
+      [],
+      'openrouter/other',
+      'high',
+      undefined,
+      [],
+      'default',
+    )
+  })
+
   it('accepts gpt-prefixed model ids saved under a custom provider thread key', async () => {
     installTestWindow({
       'codex-web-local.selected-thread-id.v1': 'thread-a',
