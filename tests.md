@@ -302,6 +302,35 @@ This file tracks manual regression and feature verification steps.
 
 ---
 
+### Pinned threads remain visible during background pagination
+
+#### Feature/Change Name
+Pinned threads are no longer removed from the Pinned section while the sidebar is still loading older thread-list pages.
+
+#### Prerequisites/Setup
+1. Dev server running (`pnpm run dev`)
+2. More than 50 total unarchived threads exist
+3. At least one older thread outside the initial recent page is pinned
+4. Light theme and dark theme both available from the appearance switcher
+
+#### Steps
+1. In light theme, reload the app.
+2. Immediately open the sidebar Pinned section.
+3. Confirm pinned rows from older history remain in the Pinned section after the initial thread list appears.
+4. Wait for background thread pagination to finish.
+5. Confirm the same pinned rows remain visible and can still be selected.
+6. Switch to dark theme and repeat steps 1-5.
+
+#### Expected Results
+- Saved pinned thread IDs are preserved while only the initial thread-list page is loaded.
+- Missing pinned IDs are pruned only after the full thread list has loaded.
+- Pinned rows remain readable and selectable in both light and dark themes.
+
+#### Rollback/Cleanup
+- Unpin any disposable threads created only for this test.
+
+---
+
 ### Feature: Project automations from the sidebar project menu
 
 #### Feature/Change Name
@@ -324,12 +353,17 @@ Project rows can create and manage project-scoped cron automations using the sam
 9. Save a second project automation and confirm both records appear in the dialog list independently.
 10. Confirm the project row automation chip shows the bolt icon plus the visible count `2`.
 11. Repeat the same two-automation check on a chat thread and confirm the thread row chip shows the bolt icon plus the visible count `2`.
-12. Remove one project automation and confirm the project row chip returns to icon-only for one remaining automation.
-13. Remove the final project automation and confirm the project menu returns to `Add automation…` and the project row automation icon disappears.
-14. Switch to dark theme and repeat steps 1-11.
+12. If a project row has no resolved absolute cwd, confirm project automation creation is blocked with a clear error and no non-absolute `cwds` value is written.
+13. For a cron automation TOML with multiple `cwds`, edit it from one project and confirm the other `cwds` entries remain in the file.
+14. For the same multi-cwd automation, remove it from one project and confirm only that cwd is removed; the automation folder remains until the final cwd is removed.
+15. Remove one project automation and confirm the project row chip returns to icon-only for one remaining automation.
+16. Remove the final project automation and confirm the project menu returns to `Add automation…` and the project row automation icon disappears.
+17. Switch to dark theme and repeat steps 1-11.
 
 #### Expected Results
 - Project automations are stored as cron automations with `cwds = ["<absolute project path>"]`, including when the sidebar row displays only the project folder name.
+- Project automation creation/save never persists sidebar display labels or other non-absolute values into `cwds`.
+- Editing or deleting a project automation associated with multiple `cwds` preserves the other project cwd associations instead of overwriting or deleting the shared automation.
 - Thread heartbeat automations remain scoped by `target_thread_id` and continue to use `Run now`.
 - Project automation dialogs use project-specific copy and do not show `Run now`.
 - The project menu, dialog list, inputs, schedule controls, status selector, automation icon, and multi-automation count badge remain readable in light and dark themes.
@@ -1730,6 +1764,39 @@ Model, skill, thinking, and plan controls remain usable while a thread turn is i
 
 #### Rollback/Cleanup
 - If needed, run another sync pull/push to restore previous skill state in the sync repo.
+
+### Feature: Public shared skills pull overwrites only shared skills
+
+#### Prerequisites
+- App running from this repository with Skills Hub available.
+- GitHub skills sync is not configured/logged in.
+- Local shared skills directory exists at `~/.codex/skills/shared_skills`.
+
+#### Steps
+1. Create a temporary local-only skill folder under `~/.codex/skills/shared_skills`, or edit a tracked shared skill file in that directory.
+2. Note the parent `~/.codex/skills` status, including any unrelated local edits outside `shared_skills`.
+3. Open `Skills Hub`.
+4. Trigger `Pull` from the `Skills Sync (GitHub)` panel.
+5. Wait for the pull success toast.
+6. Inspect `~/.codex/skills/shared_skills` and compare it with the public `OpenClawAndroid/skills` `android` branch.
+7. Inspect `~/.codex/skills` and verify unrelated parent-level files were not reset or cleaned by the unauthenticated pull.
+8. If `~/.codex/skills/shared_skills/.git` is a git file or worktree/submodule-style pointer, repeat the pull and verify the nested repo is not reinitialized.
+9. Inspect the `/codex-api/skills-sync/pull` response and verify `data.synced` matches the number of direct shared skill folders with `SKILL.md`.
+10. In light theme, verify the Skills Hub list reloads and does not show stale local-only skills.
+11. Switch to dark theme and verify the same Skills Hub state remains readable and current.
+
+#### Expected Results
+- Public unauthenticated pull resets only the nested `shared_skills` repo to the public upstream `android` branch.
+- Local uncommitted edits and local-only untracked skill folders inside `shared_skills` are removed by the pull.
+- Parent-level `~/.codex/skills` files outside `shared_skills` are not reset or cleaned.
+- Existing git-file/worktree/submodule-style shared skills repos are reused, not reinitialized.
+- The pull response reports the shared skills count from `~/.codex/skills/shared_skills`, not the parent skills directory.
+- The installed skills list reloads immediately after the pull in both light and dark theme.
+- Private GitHub sync repos still preserve local edits through the bidirectional sync path.
+
+#### Rollback/Cleanup
+- Recreate any intentionally removed local-only shared skill if it should be kept.
+- Use private sync `Push` only after confirming the public pull result should be mirrored elsewhere.
 
 ### Feature: Force Refresh Skills button in Skills Sync panel
 
