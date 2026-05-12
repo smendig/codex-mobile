@@ -303,6 +303,33 @@ Rollback/cleanup:
 
 ---
 
+### Server inline payload helper split
+
+#### Feature/Change Name
+Codex bridge inline payload and session-skill recovery extraction.
+
+#### Prerequisites/Setup
+1. Dependencies installed with `pnpm install`
+2. Existing Codex session fixtures covered by the server bridge unit tests
+
+#### Steps
+1. Run `pnpm run test:unit -- src/server/codexAppServerBridge.inlinePayload.test.ts src/server/codexAppServerBridge.archive.test.ts`.
+2. Run `pnpm run build:cli`.
+3. Manually open a thread that contains generated/inline image or file payload content.
+4. Confirm inline media still renders through local proxy URLs instead of huge inline payloads.
+5. Open a thread whose user message used skills and confirm skill chips remain associated with the correct turn.
+
+#### Expected Results
+- Inline payload sanitization tests pass.
+- Archive recovery tests continue to pass through the bridge re-export.
+- CLI build succeeds with the extracted server module.
+- Session skill inputs and local inline-media proxying behave the same after extraction.
+
+#### Rollback/Cleanup
+- Remove any temporary files created under the system temp `codex-web-inline-media` directory if manual media testing creates unwanted artifacts.
+
+---
+
 ### Desktop state storage helper split
 
 #### Feature/Change Name
