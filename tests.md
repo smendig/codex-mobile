@@ -5656,13 +5656,17 @@ Recover stored session turns when provider/auth restart returns an empty thread.
 4. Copy host `auth.json` into the container `CODEX_HOME` and restart the container.
 5. Reopen `#/thread/<thread-id>`.
 6. Confirm the old `hi` and assistant reply still render instead of `No messages in this thread yet.`
-7. Repeat the reopen check in dark theme.
+7. Send a second message from the recovered thread after Codex auth is active.
+8. Confirm the thread shows the original OpenCode Zen reply and the new GPT reply together.
+9. Repeat the reopen check in dark theme.
 
 #### Expected Results
 - If app-server returns a valid thread with `turns: []` but the thread path points at a JSONL containing user/assistant `response_item` messages, the bridge reconstructs minimal `userMessage` and `agentMessage` turn items.
 - Synthetic setup blocks such as `<environment_context>` and skill wrapper payloads are not rendered as chat messages.
 - Recovered session items render even when the app-server schema drops item ids; the UI uses stable turn-relative fallback ids.
 - If `thread/resume` fails because the old thread references a provider that is not configured after auth/provider restart, the UI falls back to `thread/read` detail loading.
+- A follow-up send in the recovered thread tolerates the same historical-provider resume failure and starts the new turn with the active Codex model.
+- If Docker Codex auth does not expose a model catalog, the composer falls back to the default Codex model list instead of showing a disabled generic `Model` selector.
 - The routed thread remains readable after switching from no-auth OpenCode Zen fallback to Codex-auth startup.
 - Light theme and dark theme render the recovered user and assistant messages clearly.
 

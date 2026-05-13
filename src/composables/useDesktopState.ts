@@ -98,6 +98,11 @@ function isCodexCliMissingError(error: unknown): boolean {
   return message.includes('Codex CLI is not available')
 }
 
+function isMissingHistoricalProviderError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '')
+  return message.includes('Model provider') && message.includes('not found')
+}
+
 function loadReadStateMap(): Record<string, string> {
   if (typeof window === 'undefined') return {}
 
@@ -4306,14 +4311,18 @@ export function useDesktopState() {
       if (needsResume) {
         try {
           resumedThread = await resumeThread(threadId)
-        } catch {
-          resumedThread = null
+        } catch (unknownError) {
+          if (!isMissingHistoricalProviderError(unknownError)) {
+            throw unknownError
+          }
         }
       }
       const detail = resumedThread ?? await getThreadDetail(threadId)
 
       if (resumedThread) {
         setThreadModelId(threadId, resumedThread.model)
+      }
+      if (resumedThread || needsResume) {
         resumedThreadById.value = {
           ...resumedThreadById.value,
           [threadId]: true,
@@ -4941,8 +4950,14 @@ export function useDesktopState() {
 
     try {
       if (resumedThreadById.value[threadId] !== true) {
-        const resumedThread = await resumeThread(threadId)
-        setThreadModelId(threadId, resumedThread.model)
+        try {
+          const resumedThread = await resumeThread(threadId)
+          setThreadModelId(threadId, resumedThread.model)
+        } catch (unknownError) {
+          if (!isMissingHistoricalProviderError(unknownError)) {
+            throw unknownError
+          }
+        }
       }
       const modelId = readModelIdForThread(threadId)
 
