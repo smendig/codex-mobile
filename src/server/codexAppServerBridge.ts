@@ -28,6 +28,7 @@ import {
   createDefaultOpenCodeZenFreeModeState,
   getFreeModeConfigArgs,
   getFreeModeEnvVars,
+  resolveOpenRouterModelForProviderSwitch,
   shouldCreateDefaultFreeModeStateForMissingAuth,
   shouldSuppressCommunityFreeModeForCodexAuth,
   type FreeModeState,
@@ -6082,6 +6083,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
                 ...current,
                 enabled: true,
                 apiKey: key,
+                model: resolveOpenRouterModelForProviderSwitch(current),
                 customKey: true,
                 provider: 'openrouter',
                 wireApi: current.wireApi === 'chat' ? 'chat' : 'responses',
@@ -6094,6 +6096,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
               const state: FreeModeState = {
                 ...current,
                 apiKey: communityKey,
+                model: resolveOpenRouterModelForProviderSwitch(current),
                 customKey: false,
                 provider: 'openrouter',
                 wireApi: current.wireApi === 'chat' ? 'chat' : 'responses',
@@ -6133,7 +6136,7 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
               prevKeys[providerType] = resolvedKey
             }
             const resolvedModel = providerType === 'openrouter'
-              ? (current.model || FREE_MODE_DEFAULT_MODEL)
+              ? resolveOpenRouterModelForProviderSwitch(current)
               : providerType === 'custom'
                 ? await fetchCustomEndpointDefaultModel(baseUrl, resolvedKey)
                 : OPENCODE_ZEN_DEFAULT_MODEL

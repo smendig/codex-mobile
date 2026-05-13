@@ -4,6 +4,7 @@ import {
   OPENCODE_ZEN_DEFAULT_MODEL,
   createDefaultOpenCodeZenFreeModeState,
   getFreeModeConfigArgs,
+  resolveOpenRouterModelForProviderSwitch,
   shouldCreateDefaultFreeModeStateForMissingAuth,
   shouldSuppressCommunityFreeModeForCodexAuth,
 } from './freeMode'
@@ -99,6 +100,24 @@ describe('unauthenticated free mode defaults', () => {
     expect(args).toContain('model_provider="openrouter_free"')
     expect(args).toContain(`model="${FREE_MODE_DEFAULT_MODEL}"`)
     expect(args).toContain('model_providers.openrouter_free.base_url="http://127.0.0.1:4173/codex-api/openrouter-proxy/v1"')
+  })
+
+  it('resets stale non-OpenRouter models when switching to OpenRouter', () => {
+    expect(resolveOpenRouterModelForProviderSwitch({
+      enabled: true,
+      apiKey: null,
+      model: OPENCODE_ZEN_DEFAULT_MODEL,
+      provider: 'opencode-zen',
+      wireApi: 'responses',
+    })).toBe(FREE_MODE_DEFAULT_MODEL)
+
+    expect(resolveOpenRouterModelForProviderSwitch({
+      enabled: true,
+      apiKey: 'sk-or-test',
+      model: 'meta-llama/llama-3.3-70b-instruct:free',
+      provider: 'openrouter',
+      wireApi: 'responses',
+    })).toBe('meta-llama/llama-3.3-70b-instruct:free')
   })
 
   it('keeps Codex app-server on responses wire API for custom chat providers', () => {

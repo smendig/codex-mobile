@@ -5596,6 +5596,7 @@ Provider-backed model lists reject stale configured and resumed models.
 #### Expected Results
 - Provider-backed model lists are authoritative and do not append stale configured models from another provider.
 - OpenRouter dropdown contains OpenRouter models only.
+- Switching from OpenCode Zen to OpenRouter resets backend `currentModel` to `openrouter/free` or another OpenRouter model instead of preserving `big-pickle`.
 - NIM dropdown contains NIM models only.
 - Custom chat providers keep Codex app-server configured as local Responses while the custom proxy translates to chat completions upstream.
 - NIM send produces either an assistant reply or the exact upstream error in chat.

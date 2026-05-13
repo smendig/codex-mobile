@@ -216,6 +216,14 @@ export function shouldSuppressCommunityFreeModeForCodexAuth(
   return current.provider === 'openrouter' || current.provider === 'opencode-zen' || !current.provider
 }
 
+export function resolveOpenRouterModelForProviderSwitch(current: FreeModeState): string {
+  const currentModel = current.model?.trim() ?? ''
+  if (current.provider === 'openrouter' && currentModel) {
+    return currentModel
+  }
+  return FREE_MODE_DEFAULT_MODEL
+}
+
 export function getFreeModeEnvVars(state: FreeModeState): Record<string, string> {
   if (!state.enabled) return {}
 
