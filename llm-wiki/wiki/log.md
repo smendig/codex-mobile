@@ -64,3 +64,9 @@
 - Updated wiki page: [concepts/opencode-zen-big-pickle.md](./concepts/opencode-zen-big-pickle.md).
 - Documents: no-auth Zen runtime fallback, auth-mounted Docker switching back to Codex defaults, first-turn materialization as a transient live-state condition, provider-model-first loading, and the build-time Docker install workaround for runtime `pnpm dlx` OOM risk.
 - Updated [overview.md](./overview.md), [entities/codex-web-local.md](./entities/codex-web-local.md), and [index.md](./index.md).
+
+## [2026-05-13] ingest | provider selection drift Docker cycle
+- Added source: [raw/fixes/provider-selection-drift-docker-cycle.md](../raw/fixes/provider-selection-drift-docker-cycle.md).
+- Updated wiki page: [concepts/opencode-zen-big-pickle.md](./concepts/opencode-zen-big-pickle.md).
+- Documents: provider-tagged model selection storage, no-auth Zen and auth Codex packaged Docker passes, provider-switch route-continuity fix, and unresolved historical-thread, OpenRouter, NVIDIA NIM, and Groq validation failures.
+- Updated [overview.md](./overview.md), [entities/codex-web-local.md](./entities/codex-web-local.md), and [index.md](./index.md).

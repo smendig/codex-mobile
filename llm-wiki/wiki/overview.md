@@ -19,6 +19,7 @@ This wiki tracks knowledge about the `codex-web-local` project and related workf
 - [realtime chat rendering and inline media source](../raw/features/realtime-chat-rendering-inline-media.md)
 - [skills route UI and first-launch card source](../raw/features/skills-route-ui-and-first-launch-card.md)
 - [OpenCode Zen Docker auth/provider models source](../raw/fixes/opencode-zen-docker-auth-provider-models.md)
+- [Provider selection drift Docker cycle source](../raw/fixes/provider-selection-drift-docker-cycle.md)
 
 ## Linked pages
 - [Entity: codex-web-local](./entities/codex-web-local.md)

@@ -85,9 +85,27 @@ User-configured provider state is preserved: OpenRouter with `customKey: true`, 
 
 This behavior was fixed in commit `7ee94f83` and validated in a packaged Docker image by running: no-auth Zen startup, switch to OpenRouter, copy host `auth.json`, reload, verify Codex provider + Accounts `1`, send `hi`, and wait for a Codex reply.
 
+## Provider Selection Drift Docker Cycle
+
+Provider/model selection state now needs to be treated as provider-scoped data, not as a bare model string. Stored model selections use the object shape `{ providerId, modelId }`, while legacy string values are accepted only when compatible with the active provider's model list.
+
+Validated passing states from the packaged Docker cycle:
+- Empty `CODEX_HOME` on port `4191` selected OpenCode Zen, had Accounts `0`, loaded exclusive Zen provider models with `big-pickle`, and sent `hi` successfully.
+- Auth-mounted `CODEX_HOME` on port `4192` selected Codex, had Accounts `1`, loaded a Codex-only dropdown without `big-pickle`, and sent `hi` successfully.
+- Provider switching no longer forces navigation to home; the routed thread URL stayed stable after switching Codex to OpenCode Zen.
+
+Known unresolved provider-switch failures:
+- A historical Codex thread kept its URL after switching to Zen, but sending on it failed with `RPC turn/start failed with HTTP 502: thread not found`.
+- OpenRouter can appear selected while backend status remains `enabled=false` and the composer dropdown still shows Codex models.
+- A custom NVIDIA NIM provider can successfully expose 123 models through `/codex-api/provider-models`, but the UI dropdown can still show Codex models and sending can incorrectly hit `/codex-api/custom-proxy/v1/responses` despite `wireApi=chat`.
+- Groq custom-provider send validation still needs a Groq API key.
+
+These unresolved findings are tracked in `whatToTest.md` until fixed and revalidated.
+
 ## Related
 - Source: [opencode-zen-big-pickle-codex-cli.md](../../raw/fixes/opencode-zen-big-pickle-codex-cli.md)
 - Source: [opencode-zen-reasoning-content-proxy.md](../../raw/fixes/opencode-zen-reasoning-content-proxy.md)
 - Source: [opencode-zen-docker-auth-provider-models.md](../../raw/fixes/opencode-zen-docker-auth-provider-models.md)
 - Source: [copied-auth-provider-promotion.md](../../raw/fixes/copied-auth-provider-promotion.md)
+- Source: [provider-selection-drift-docker-cycle.md](../../raw/fixes/provider-selection-drift-docker-cycle.md)
 - [merge-to-main-workflow.md](./merge-to-main-workflow.md)

@@ -26,6 +26,7 @@
 - [Realtime chat rendering source](../../raw/features/realtime-chat-rendering-inline-media.md)
 - [Skills route UI + first-launch card source](../../raw/features/skills-route-ui-and-first-launch-card.md)
 - [OpenCode Zen Docker auth/provider models source](../../raw/fixes/opencode-zen-docker-auth-provider-models.md)
+- [Provider selection drift Docker cycle source](../../raw/fixes/provider-selection-drift-docker-cycle.md)
 - [Integrated terminal concept](../concepts/integrated-terminal.md)
 - [Directory Hub, Composio, and Skills Search concept](../concepts/directory-hub-composio-skills.md)
 - [Realtime chat rendering concept](../concepts/realtime-chat-rendering.md)
