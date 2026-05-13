@@ -349,15 +349,20 @@ Plugin catalog popular examples.
 #### Steps
 1. In light theme, open `/#/skills?tab=plugins`.
 2. Confirm plugin cards are sorted by `Popular` by default.
-3. Confirm each visible plugin card shows five concrete example chips, such as browser, GitHub, email, calendar, file, deploy, or fallback action examples, instead of only generic category/capability chips.
-4. Open an installed plugin detail and confirm the same five example chips are shown in the `Examples` section.
-5. Open a plugin that is not installed or is unavailable for install and confirm its example chips remain visible in the card and detail view.
-6. Search by text from an example chip and confirm matching plugins remain discoverable.
-7. Switch to dark theme and repeat steps 1-6.
+3. Confirm the first plugin cards follow the hardcoded casual-user popularity order when those plugins are available, then fall back to heuristic scoring for the rest.
+4. Confirm each visible plugin card shows five concrete example chips, such as browser, GitHub, email, calendar, file, deploy, or fallback action examples, instead of only generic category/capability chips.
+5. Open an installed plugin detail and confirm the same five example chips are shown in the `Examples` section.
+6. Open a plugin that is not installed or is unavailable for install and confirm its example chips remain visible in the card and detail view.
+7. Search by text from an example chip and confirm matching plugins remain discoverable.
+8. Open the Apps tab and confirm `Popular` uses the hardcoded casual-user app order for available top entries, then heuristic scoring for the rest.
+9. Open the Composio tab after login and confirm `Popular` uses the hardcoded casual-user connector order for available top entries, then heuristic scoring for the rest.
+10. Switch to dark theme and repeat steps 1-9.
 
 #### Expected Results
 - Plugin examples are visible before installation and are not gated by installed/enabled state.
 - Popular plugin families show practical examples tailored to their domain.
+- Plugin, Apps, and Composio popular sorting put the hardcoded casual-user top 20 entries first when available.
+- Rows outside the hardcoded top 20 continue to use the existing heuristic popularity score.
 - Plugins without recognized domains still show five fallback examples derived from default prompts, capabilities, or safe generic actions.
 - Example chips remain readable in light theme and dark theme.
 

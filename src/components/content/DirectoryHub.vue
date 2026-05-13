@@ -702,6 +702,50 @@ const COMPOSIO_SKILL_PATH = '/Users/igor/.codex/skills/shared_skills/composio-cl
 const COMPOSIO_PAGE_LIMIT = 50
 
 const POPULAR_LIMIT = 100
+const POPULAR_PLUGIN_TOP_20: Array<[RegExp, number]> = [
+  [/^(browser|browser use|in app browser)$/i, 20],
+  [/^chrome$/i, 19],
+  [/^(computer use|desktop)$/i, 18],
+  [/^github$/i, 17],
+  [/^gmail$/i, 16],
+  [/^google calendar$/i, 15],
+  [/^outlook email$/i, 14],
+  [/^google drive$/i, 13],
+  [/^slack$/i, 12],
+  [/^notion$/i, 11],
+  [/^figma$/i, 10],
+  [/^canva$/i, 9],
+  [/^linear$/i, 8],
+  [/^jira$/i, 7],
+  [/^google docs$/i, 6],
+  [/^google sheets$/i, 5],
+  [/^dropbox$/i, 4],
+  [/^(teams|microsoft teams)$/i, 3],
+  [/^sharepoint$/i, 2],
+  [/^cloudflare$/i, 1],
+]
+const POPULAR_APP_TOP_20: Array<[RegExp, number]> = [
+  [/^gmail$/i, 20],
+  [/^google calendar$/i, 19],
+  [/^outlook email$/i, 18],
+  [/^outlook calendar$/i, 17],
+  [/^google drive$/i, 16],
+  [/^google docs$/i, 15],
+  [/^google sheets$/i, 14],
+  [/^dropbox$/i, 13],
+  [/^slack$/i, 12],
+  [/^notion$/i, 11],
+  [/^canva$/i, 10],
+  [/^figma$/i, 9],
+  [/^github$/i, 8],
+  [/^linear$/i, 7],
+  [/^jira$/i, 6],
+  [/^trello$/i, 5],
+  [/^asana$/i, 4],
+  [/^youtube$/i, 3],
+  [/^(x|twitter)$/i, 2],
+  [/^salesforce$/i, 1],
+]
 const POPULAR_APP_NAME_BONUSES: Array<[RegExp, number]> = [
   [/^gmail$/i, 30_000],
   [/^google calendar$/i, 29_500],
@@ -1120,6 +1164,20 @@ function bonusForName(name: string, rows: Array<[RegExp, number]>): number {
   return rows.reduce((score, [pattern, bonus]) => score + (pattern.test(name) ? bonus : 0), 0)
 }
 
+function normalizePopularRankName(name: string): string {
+  return normalizeAppNameForRanking(name)
+    .replace(/[-_]+/gu, ' ')
+    .replace(/\s+plugin$/iu, '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+}
+
+function pinnedPopularRank(name: string, rows: Array<[RegExp, number]>): number {
+  const normalized = normalizePopularRankName(name)
+  const match = rows.find(([pattern]) => pattern.test(normalized))
+  return match?.[1] ?? 0
+}
+
 function normalizeAppNameForRanking(name: string): string {
   return name
     .replace(/\s+\((synced|legacy)\)\s*$/iu, '')
@@ -1225,6 +1283,11 @@ function filterComposioConnectors(rows: DirectoryComposioConnector[], query: str
 }
 
 function pluginPopularScore(plugin: DirectoryPluginSummary): number {
+  const pinnedRank = Math.max(
+    pinnedPopularRank(plugin.displayName, POPULAR_PLUGIN_TOP_20),
+    pinnedPopularRank(plugin.name, POPULAR_PLUGIN_TOP_20),
+  )
+  if (pinnedRank > 0) return 1_000_000 + pinnedRank
   return (
     (plugin.installed ? 500 : 0) +
     (plugin.enabled ? 40 : 0) +
@@ -1237,6 +1300,8 @@ function pluginPopularScore(plugin: DirectoryPluginSummary): number {
 
 function appPopularScore(app: DirectoryAppInfo): number {
   const normalizedName = normalizeAppNameForRanking(app.name)
+  const pinnedRank = pinnedPopularRank(normalizedName, POPULAR_APP_TOP_20)
+  if (pinnedRank > 0) return 1_000_000 + pinnedRank
   return (
     (app.isAccessible ? 10_000 : 0) +
     bonusForName(normalizedName, POPULAR_APP_NAME_BONUSES) +
