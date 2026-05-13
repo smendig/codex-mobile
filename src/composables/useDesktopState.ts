@@ -155,8 +155,22 @@ function normalizeCollaborationMode(value: unknown): CollaborationModeKind {
   return value === 'plan' ? 'plan' : 'default'
 }
 
+type StoredModelSelection = string | {
+  providerId: string
+  modelId: string
+}
+
 function normalizeStoredModelId(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : ''
+  if (typeof value === 'string') return value.trim()
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return ''
+  const record = value as Record<string, unknown>
+  return typeof record.modelId === 'string' ? record.modelId.trim() : ''
+}
+
+function normalizeStoredModelProviderId(value: unknown): string {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return ''
+  const record = value as Record<string, unknown>
+  return typeof record.providerId === 'string' ? normalizeProviderContextId(record.providerId) : ''
 }
 
 function createStringKeyedRecord<T>(): Record<string, T> {
@@ -222,21 +236,31 @@ function toThreadContextId(threadId: string): string {
   return normalizedThreadId || NEW_THREAD_COLLABORATION_MODE_CONTEXT
 }
 
-function loadSelectedModelMap(): Record<string, string> {
-  if (typeof window === 'undefined') return createStringKeyedRecord<string>()
+function createStoredModelSelection(providerId: string, modelId: string): StoredModelSelection {
+  return {
+    providerId: normalizeProviderContextId(providerId),
+    modelId: modelId.trim(),
+  }
+}
+
+function loadSelectedModelMap(): Record<string, StoredModelSelection> {
+  if (typeof window === 'undefined') return createStringKeyedRecord<StoredModelSelection>()
 
   try {
     const raw = window.localStorage.getItem(SELECTED_MODEL_BY_CONTEXT_STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw) as unknown
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return createStringKeyedRecord<string>()
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return createStringKeyedRecord<StoredModelSelection>()
 
-      const next = createStringKeyedRecord<string>()
+      const next = createStringKeyedRecord<StoredModelSelection>()
       for (const [contextId, value] of Object.entries(parsed as Record<string, unknown>)) {
         if (typeof contextId !== 'string' || contextId.length === 0) continue
         const normalizedModelId = normalizeStoredModelId(value)
         if (normalizedModelId) {
-          next[contextId] = normalizedModelId
+          const normalizedProviderId = normalizeStoredModelProviderId(value)
+          next[contextId] = normalizedProviderId
+            ? createStoredModelSelection(normalizedProviderId, normalizedModelId)
+            : normalizedModelId
         }
       }
       return next
@@ -246,7 +270,7 @@ function loadSelectedModelMap(): Record<string, string> {
   }
 
   const legacyModelId = normalizeStoredModelId(window.localStorage.getItem(LEGACY_SELECTED_MODEL_STORAGE_KEY))
-  const next = createStringKeyedRecord<string>()
+  const next = createStringKeyedRecord<StoredModelSelection>()
   if (legacyModelId) {
     next[NEW_THREAD_COLLABORATION_MODE_CONTEXT] = legacyModelId
   }
@@ -254,7 +278,7 @@ function loadSelectedModelMap(): Record<string, string> {
 }
 
 function readSelectedModel(
-  state: Record<string, string>,
+  state: Record<string, StoredModelSelection>,
   threadId: string,
 ): string {
   const contextId = toThreadContextId(threadId)
@@ -263,7 +287,7 @@ function readSelectedModel(
   return normalizeStoredModelId(state[NEW_THREAD_COLLABORATION_MODE_CONTEXT])
 }
 
-function saveSelectedModelMap(state: Record<string, string>): void {
+function saveSelectedModelMap(state: Record<string, StoredModelSelection>): void {
   if (typeof window === 'undefined') return
   try {
     if (Object.keys(state).length === 0) {
@@ -1386,7 +1410,7 @@ export function useDesktopState() {
   const selectedCollaborationModeByContext = ref<Record<string, CollaborationModeKind>>(
     loadSelectedCollaborationModeMap(),
   )
-  const selectedModelIdByContext = ref<Record<string, string>>(loadSelectedModelMap())
+  const selectedModelIdByContext = ref<Record<string, StoredModelSelection>>(loadSelectedModelMap())
   const selectedCollaborationMode = ref<CollaborationModeKind>(
     readSelectedCollaborationMode(selectedCollaborationModeByContext.value, selectedThreadId.value),
   )
@@ -1584,17 +1608,30 @@ export function useDesktopState() {
     return ''
   }
 
+  function readCompatibleStoredModelId(value: StoredModelSelection | undefined): string {
+    const normalizedModelId = normalizeStoredModelId(value)
+    if (!normalizedModelId) return ''
+    const storedProviderId = normalizeStoredModelProviderId(value)
+    const currentProviderId = normalizeProviderContextId(activeProviderId.value)
+    if (storedProviderId) {
+      return storedProviderId === currentProviderId ? normalizedModelId : ''
+    }
+    return availableModelIds.value.includes(normalizedModelId) ? normalizedModelId : ''
+  }
+
   function readModelIdForThread(threadId: string): string {
     const contextId = toThreadContextId(threadId)
     if (contextId === NEW_THREAD_COLLABORATION_MODE_CONTEXT) {
       const normalizedProviderId = normalizeProviderContextId(activeProviderId.value)
       const providerContextId = toProviderModelContextId(normalizedProviderId)
       const providerModelId = providerContextId
-        ? normalizeStoredModelId(selectedModelIdByContext.value[providerContextId])
+        ? readCompatibleStoredModelId(selectedModelIdByContext.value[providerContextId])
         : ''
       if (providerModelId) return providerModelId
     }
-    return readSelectedModel(selectedModelIdByContext.value, threadId).trim()
+    const contextModelId = readCompatibleStoredModelId(selectedModelIdByContext.value[contextId])
+    if (contextModelId) return contextModelId
+    return readCompatibleStoredModelId(selectedModelIdByContext.value[NEW_THREAD_COLLABORATION_MODE_CONTEXT])
   }
 
   function ensureAvailableModelIds(...modelIds: string[]): void {
@@ -1635,7 +1672,7 @@ export function useDesktopState() {
     const selectedContextId = providerContextId || contextId
     if (normalizedModelId) {
       const nextModelMap = cloneStringKeyedRecord(selectedModelIdByContext.value)
-      nextModelMap[selectedContextId] = normalizedModelId
+      nextModelMap[selectedContextId] = createStoredModelSelection(normalizedProviderId, normalizedModelId)
       if (providerContextId) {
         delete nextModelMap[contextId]
       }
@@ -1667,7 +1704,7 @@ export function useDesktopState() {
     const normalizedModelId = modelId.trim()
     if (normalizedModelId) {
       const nextModelMap = cloneStringKeyedRecord(selectedModelIdByContext.value)
-      nextModelMap[normalizedThreadId] = normalizedModelId
+      nextModelMap[normalizedThreadId] = createStoredModelSelection(activeProviderId.value, normalizedModelId)
       selectedModelIdByContext.value = nextModelMap
     } else {
       selectedModelIdByContext.value = omitStringKeyedRecordKey(selectedModelIdByContext.value, normalizedThreadId)
@@ -1883,18 +1920,19 @@ export function useDesktopState() {
       const normalizedProviderId = normalizeProviderContextId(currentConfig.providerId)
       const isProviderBacked = normalizedProviderId !== 'codex'
       activeProviderId.value = normalizedProviderId
-      const normalizedSelectedModelId = readModelIdForThread(selectedThreadId.value)
       const modelIds = await getAvailableModelIds({
         includeProviderModels: options?.includeProviderModels !== false || isProviderBacked,
         requireProviderModels: isProviderBacked,
       })
       const providerModelContextId = toProviderModelContextId(normalizedProviderId)
       const providerScopedModelId = providerModelContextId
-        ? normalizeStoredModelId(selectedModelIdByContext.value[providerModelContextId])
+        ? readCompatibleStoredModelId(selectedModelIdByContext.value[providerModelContextId])
         : ''
+      availableModelIds.value = [...modelIds]
+      const normalizedSelectedModelId = readModelIdForThread(selectedThreadId.value)
       const nextModelIds = [...modelIds]
       if (!options?.providerChanged) {
-        const extraModelIds = isProviderBacked ? [normalizedConfiguredModelId] : [normalizedSelectedModelId, normalizedConfiguredModelId]
+        const extraModelIds = isProviderBacked ? [normalizedConfiguredModelId] : [normalizedConfiguredModelId]
         for (const modelId of extraModelIds) {
           if (modelId && !nextModelIds.includes(modelId)) {
             nextModelIds.push(modelId)
@@ -1925,7 +1963,7 @@ export function useDesktopState() {
       }
       if (providerModelContextId && selectedModelId.value.trim().length > 0) {
         const nextModelMap = cloneStringKeyedRecord(selectedModelIdByContext.value)
-        nextModelMap[providerModelContextId] = selectedModelId.value.trim()
+        nextModelMap[providerModelContextId] = createStoredModelSelection(normalizedProviderId, selectedModelId.value.trim())
         selectedModelIdByContext.value = nextModelMap
         saveSelectedModelMap(selectedModelIdByContext.value)
       }

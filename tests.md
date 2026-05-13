@@ -5508,3 +5508,36 @@ Runtime auth detection after starting without auth.
 
 #### Rollback/Cleanup
 - Stop the temporary container and remove its mounted `CODEX_HOME` directory.
+
+---
+
+### Provider/model selection metadata guard
+
+#### Feature/Change Name
+Provider-tagged model selection storage and stale cross-provider model rejection.
+
+#### Prerequisites/Setup
+1. Start the app with `pnpm run dev --host 127.0.0.1 --port 4173`.
+2. Have at least one Codex provider model available.
+3. For fallback checks, run a no-auth Docker container so OpenCode Zen models are available.
+
+#### Steps
+1. In light theme, set `localStorage["codex-web-local.selected-model-by-context.v1"]` to `{"__new-thread__":"big-pickle"}` and refresh with Provider set to Codex.
+2. Open the model dropdown and confirm `big-pickle` is absent.
+3. Set `localStorage["codex-web-local.selected-model-by-context.v1"]` to `{"__new-thread__":{"providerId":"opencode-zen","modelId":"big-pickle"}}` and refresh with Provider set to Codex.
+4. Open the model dropdown and confirm the selected model is a Codex model and `big-pickle` is absent.
+5. Switch Provider from Custom to OpenRouter to Codex and open the model dropdown after each switch.
+6. Repeat steps 1-5 in dark theme.
+7. In the no-auth Docker container, confirm Provider is OpenCode Zen and the dropdown still shows Zen models such as `big-pickle`.
+
+#### Expected Results
+- Stored model selections are saved as `{ "providerId": "<provider>", "modelId": "<model>" }` after the next write.
+- Legacy string selections are accepted only when the model exists in the active provider model list.
+- Object selections are accepted only when their `providerId` matches the active provider.
+- Switching providers replaces incompatible selected models with the active provider scoped model, configured model, or first available active-provider model.
+- Codex dropdowns never include stale Zen, Custom, or OpenRouter models.
+- Light theme and dark theme render the dropdown labels and selection state clearly.
+- No-auth Docker fallback still preserves OpenCode Zen model selection and does not lose `big-pickle`.
+
+#### Rollback/Cleanup
+- Remove any manually injected `codex-web-local.selected-model-by-context.v1` localStorage values after testing.
