@@ -5541,3 +5541,31 @@ Provider-tagged model selection storage and stale cross-provider model rejection
 
 #### Rollback/Cleanup
 - Remove any manually injected `codex-web-local.selected-model-by-context.v1` localStorage values after testing.
+
+---
+
+### Routed thread retention during provider refresh
+
+#### Feature/Change Name
+Keep the currently routed thread selected when a refreshed thread list omits it.
+
+#### Prerequisites/Setup
+1. Start the app with `pnpm run dev --host 127.0.0.1 --port 4173`.
+2. Open an existing thread route such as `http://127.0.0.1:4173/#/thread/<thread-id>`.
+3. Have provider switching available from Settings.
+
+#### Steps
+1. In light theme, open the target thread route and confirm its messages are visible.
+2. Switch providers so the app refreshes model and thread metadata.
+3. Simulate or reproduce a backend refresh where `thread/list` does not include the current route's `<thread-id>`.
+4. Confirm the URL remains `#/thread/<thread-id>` and the UI keeps or reloads that thread instead of navigating to home.
+5. Repeat steps 1-4 in dark theme.
+
+#### Expected Results
+- The route remains on the current thread even when the refreshed sidebar list omits that thread.
+- The app calls the thread read/resume path for the routed thread instead of replacing the route with home or another selected thread.
+- If the thread can still be read, its messages remain visible after provider refresh.
+- Light theme and dark theme retain readable thread content and composer controls.
+
+#### Rollback/Cleanup
+- Restore the original provider after verification if it was changed for the test.
