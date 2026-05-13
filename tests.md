@@ -349,7 +349,7 @@ Plugin catalog popular examples.
 #### Steps
 1. In light theme, open `/#/skills?tab=plugins`.
 2. Confirm plugin cards are sorted by `Popular` by default.
-3. Confirm the first plugin cards follow the hardcoded casual-user popularity order when those plugins are available, prioritizing email, calendar, drive, and social apps such as Reddit, X/Twitter, YouTube, Instagram, TikTok, Facebook, and LinkedIn before falling back to heuristic scoring.
+3. Confirm the first plugin cards follow the hardcoded casual-user popularity order when those plugins are available, prioritizing email, calendar, Drive, Docs, Sheets, Notion, Obsidian, and social apps such as Reddit, X/Twitter, YouTube, Instagram, TikTok, Facebook, and LinkedIn before falling back to heuristic scoring.
 4. Confirm each visible plugin card shows five concrete example chips, such as browser, GitHub, email, calendar, file, deploy, or fallback action examples, instead of only generic category/capability chips.
 5. Open an installed plugin detail and confirm the same five example chips are shown in the `Examples` section.
 6. Open a plugin that is not installed or is unavailable for install and confirm its example chips remain visible in the card and detail view.
