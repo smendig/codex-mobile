@@ -381,14 +381,14 @@ Realtime Composio connector suggestions in the chat composer.
 1. Dev server running (`pnpm run dev --host 127.0.0.1 --port 4173`)
 2. Open any thread with the normal composer visible
 3. Light theme and dark theme available
-4. For connected ranking checks, have at least one active Composio connector such as Reddit
+4. For connected-state checks, have at least one active Composio connector such as Reddit
 
 #### Steps
 1. In light theme, focus the composer and type `reddit`.
-2. Confirm a connector suggestion strip appears above the textarea.
+2. Confirm a single connector suggestion appears in the bottom controls row after Model, Skills, and Thinking.
 3. Confirm Reddit is shown and, if connected, the suggestion copy indicates it is connected.
 4. Click the Reddit suggestion.
-5. Confirm the `composio-cli` skill chip is added to the composer and a connector-specific instruction line is appended to the draft.
+5. Confirm a `composio-reddit.md` file chip is attached, the Reddit mention is removed from the draft, and no `composio-cli` skill chip is added automatically.
 6. Clear the draft, type another connector name such as `gmail`, and confirm the matching suggestion updates while typing.
 7. Type `@` to open file mentions and confirm the Composio suggestion strip does not interfere with the file mention popup.
 8. Log out of Composio and repeat steps 1-7.
@@ -396,14 +396,14 @@ Realtime Composio connector suggestions in the chat composer.
 
 #### Expected Results
 - Connector suggestions appear in realtime from normal draft text without requiring `@` syntax.
-- Matching connected connectors rank ahead of unconnected matches.
+- Matching connected connectors show connected-state emphasis.
 - After Composio logout, matching suggestions still appear from the hardcoded catalog but without connected-state emphasis.
-- Clicking a suggestion attaches the Composio skill and appends a connector-specific instruction to the draft.
+- Clicking a suggestion attaches connector documentation as a file and does not auto-add the `composio-cli` skill or append instruction text to the draft.
 - File mention behavior remains intact and takes precedence when the `@` popup is open.
-- Light theme and dark theme both render the suggestion strip correctly.
+- Light theme and dark theme both render the controls-row suggestion correctly.
 
 #### Rollback/Cleanup
-- Remove the appended connector instruction and skill chip if you do not want to send them.
+- Remove the generated `composio-*.md` attachment chip if you do not want to send it.
 
 ---
 

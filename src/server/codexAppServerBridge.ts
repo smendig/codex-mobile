@@ -247,6 +247,7 @@ const DEFAULT_API_PERF_MS_THRESHOLD = 300
 const DEFAULT_API_PERF_BODY_MB_THRESHOLD = 1
 const MB_DIVISOR = 1024 * 1024
 const COMPOSIO_USER_DATA_PATH = join(homedir(), '.composio', 'user_data.json')
+const COMPOSIO_SYNC_COMMAND_TIMEOUT_MS = 30_000
 
 type SessionRecoveredFileChange = {
   path: string
@@ -1726,6 +1727,7 @@ function probeComposioInvocation(invocation: ComposioCliInvocation): { available
   const probe = spawnSync(invocation.command, invocation.args, {
     encoding: 'utf8',
     env: process.env,
+    timeout: COMPOSIO_SYNC_COMMAND_TIMEOUT_MS,
     windowsHide: true,
   })
   const output = `${probe.stdout ?? ''}${probe.stderr ?? ''}`.trim()
@@ -2068,9 +2070,13 @@ async function installComposioCli(): Promise<ComposioInstallResult> {
   const result = spawnSync(invocation.command, invocation.args, {
     encoding: 'utf8',
     env,
+    timeout: COMPOSIO_SYNC_COMMAND_TIMEOUT_MS,
     windowsHide: true,
   })
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim()
+  if ((result.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT' || result.signal === 'SIGTERM') {
+    throw new Error('Timed out while installing Composio CLI')
+  }
   if (result.error || result.status !== 0) {
     throw new Error(output || result.error?.message || 'Failed to install Composio CLI')
   }
@@ -2089,9 +2095,13 @@ async function logoutComposioCli(): Promise<ComposioLogoutResult> {
   const result = spawnSync(invocation.command, invocation.args, {
     encoding: 'utf8',
     env: process.env,
+    timeout: COMPOSIO_SYNC_COMMAND_TIMEOUT_MS,
     windowsHide: true,
   })
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim()
+  if ((result.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT' || result.signal === 'SIGTERM') {
+    throw new Error('Timed out while logging out of Composio CLI')
+  }
   if (result.error || result.status !== 0) {
     throw new Error(output || result.error?.message || 'Failed to logout Composio CLI')
   }
@@ -2108,6 +2118,25 @@ function countRecoveredContentLines(value: string): number {
   const trimmed = normalized.endsWith('\n') ? normalized.slice(0, -1) : normalized
   if (!trimmed) return 0
   return trimmed.split('\n').length
+}
+
+function headerString(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? (value[0] ?? '') : (value ?? '')
+}
+
+function isSameOriginRequest(req: IncomingMessage): boolean {
+  const host = headerString(req.headers.host).trim().toLowerCase()
+  if (!host) return false
+  const origin = headerString(req.headers.origin).trim()
+  const referer = headerString(req.headers.referer).trim()
+  const candidate = origin || referer
+  if (!candidate) return true
+  try {
+    const parsed = new URL(candidate)
+    return parsed.host.toLowerCase() === host
+  } catch {
+    return false
+  }
 }
 
 function countRecoveredPatchLines(value: string): { addedLineCount: number; removedLineCount: number } {
@@ -6933,6 +6962,10 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
       }
 
       if (req.method === 'POST' && url.pathname === '/codex-api/composio/logout') {
+        if (!isSameOriginRequest(req)) {
+          setJson(res, 403, { error: 'Forbidden' })
+          return
+        }
         try {
           setJson(res, 200, await logoutComposioCli())
         } catch (error) {

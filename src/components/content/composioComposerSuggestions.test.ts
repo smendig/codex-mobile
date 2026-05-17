@@ -95,9 +95,13 @@ describe('mergeComposioConnectors', () => {
   it('preserves catalog availability and overlays live fields by slug', () => {
     const merged = mergeComposioConnectors(
       [connector({ slug: 'reddit', name: 'Reddit', toolsCount: 12 })],
-      [connector({ slug: 'reddit', name: 'Reddit', activeCount: 2, totalConnections: 2 })],
+      [
+        connector({ slug: 'reddit', name: 'Reddit', activeCount: 2, totalConnections: 2 }),
+        connector({ slug: 'live_only', name: 'Live Only', activeCount: 1 }),
+      ],
     )
     expect(merged[0]).toMatchObject({ slug: 'reddit', name: 'Reddit', activeCount: 2, totalConnections: 2 })
+    expect(merged[1]).toMatchObject({ slug: 'live_only', name: 'Live Only', activeCount: 1 })
   })
 })
 
@@ -116,5 +120,22 @@ describe('buildComposioConnectorDocument', () => {
     expect(buildComposioConnectorDocument(row)).toContain('Use the connected Google Calendar Composio connector (google-calendar)')
     expect(buildComposioConnectorDocument(row)).toContain('Manage calendar events.')
     expect(buildComposioConnectorDocument(row)).toContain('- Auth modes: OAUTH2')
+  })
+
+  it('handles missing connector and tool descriptions', () => {
+    const row = connector({
+      slug: 'minimal',
+      name: 'Minimal',
+      description: undefined as unknown as string,
+    })
+    const document = buildComposioConnectorDocument(row, {
+      connector: row,
+      tools: [{ slug: 'minimal_tool', name: 'Minimal Tool', description: undefined as unknown as string }],
+      connections: [],
+      dashboardUrl: '',
+    })
+
+    expect(document).toContain('No connector description is available')
+    expect(document).toContain('Minimal Tool (minimal_tool)')
   })
 })

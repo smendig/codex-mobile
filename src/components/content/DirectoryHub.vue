@@ -270,7 +270,7 @@
         <div class="composio-preview-grid">
           <article v-for="connector in visibleComposioConnectors" :key="connector.slug" class="directory-card composio-preview-card">
             <div class="directory-card-top">
-              <img v-if="connector.logoUrl" class="directory-card-icon" :src="connector.logoUrl" :alt="connector.name" loading="lazy" />
+              <img v-if="composioLogoSrc(connector)" class="directory-card-icon" :src="composioLogoSrc(connector)" :alt="connector.name" loading="lazy" />
               <div v-else class="directory-card-fallback composio-fallback">{{ connector.name.charAt(0) }}</div>
               <div class="directory-card-main">
                 <div class="directory-card-title-row">
@@ -335,7 +335,7 @@
         <div v-else class="directory-grid">
           <article v-for="connector in visibleComposioConnectors" :key="connector.slug" class="directory-card">
             <div class="directory-card-top">
-              <img v-if="connector.logoUrl" class="directory-card-icon" :src="connector.logoUrl" :alt="connector.name" loading="lazy" />
+              <img v-if="composioLogoSrc(connector)" class="directory-card-icon" :src="composioLogoSrc(connector)" :alt="connector.name" loading="lazy" />
               <div v-else class="directory-card-fallback composio-fallback">{{ connector.name.charAt(0) }}</div>
               <div class="directory-card-main">
                 <div class="directory-card-title-row">
@@ -928,16 +928,16 @@ const selectedPluginInstallUnavailable = computed(() =>
 )
 const visiblePlugins = computed(() => limitPopularRows(sortPlugins(filterPlugins(plugins.value, pluginSearchQuery.value), pluginSortMode.value), pluginSortMode.value, pluginSearchQuery.value))
 const visibleApps = computed(() => limitPopularApps(sortApps(filterApps(apps.value, appSearchQuery.value), appSortMode.value), appSortMode.value, appSearchQuery.value))
-const visibleComposioConnectors = computed(() => {
-  const sorted = sortComposioConnectors(
+const filteredComposioConnectors = computed(() =>
+  sortComposioConnectors(
     filterComposioConnectors(composioConnectors.value, composioSearchQuery.value),
     composioSortMode.value,
     composioSearchQuery.value,
-  )
-  return sorted.slice(0, composioVisibleLimit.value)
-})
+  ),
+)
+const visibleComposioConnectors = computed(() => filteredComposioConnectors.value.slice(0, composioVisibleLimit.value))
 const visibleMcpServers = computed(() => sortMcpServers(mcpServers.value, 'popular'))
-const hasMoreComposioConnectors = computed(() => visibleComposioConnectors.value.length < composioTotal.value)
+const hasMoreComposioConnectors = computed(() => visibleComposioConnectors.value.length < filteredComposioConnectors.value.length)
 const mcpStatusByName = computed(() => new Map(mcpServers.value.map((server) => [server.name, server])))
 const composioWorkspaceSummary = computed(() => {
   const status = composioStatus.value
@@ -1183,6 +1183,10 @@ function appLogoSrc(app: DirectoryAppInfo): string {
   return localAssetSrc(app.logoUrlDark || app.logoUrl)
 }
 
+function composioLogoSrc(connector: DirectoryComposioConnector): string {
+  return localAssetSrc(connector.logoUrl)
+}
+
 function composioMetaLabel(connector: DirectoryComposioConnector): string {
   if (connector.activeCount > 0) {
     return `${connector.activeCount} connected ${connector.activeCount === 1 ? 'account' : 'accounts'}`
@@ -1225,10 +1229,15 @@ function mergeComposioConnectors(
   liveRows: DirectoryComposioConnector[],
 ): DirectoryComposioConnector[] {
   const bySlug = new Map(liveRows.map((row) => [row.slug, row]))
-  return catalog.map((row) => {
+  const catalogSlugs = new Set(catalog.map((row) => row.slug))
+  const merged = catalog.map((row) => {
     const live = bySlug.get(row.slug)
     return live ? { ...row, ...live } : row
   })
+  return [
+    ...merged,
+    ...liveRows.filter((row) => !catalogSlugs.has(row.slug)),
+  ]
 }
 
 function buildLocalComposioDetail(connector: DirectoryComposioConnector): DirectoryComposioConnectorDetail {

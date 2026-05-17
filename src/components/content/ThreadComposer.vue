@@ -303,7 +303,10 @@
               class="thread-composer-composio-suggestion"
               type="button"
               :disabled="isInteractionDisabled"
-              @mousedown.prevent="applyComposioSuggestion(connector)"
+              @mousedown.prevent
+              @click="applyComposioSuggestion(connector)"
+              @keydown.enter.prevent="applyComposioSuggestion(connector)"
+              @keydown.space.prevent="applyComposioSuggestion(connector)"
             >
               <span class="thread-composer-composio-suggestion-title">
                 Use {{ connector.name }}
@@ -497,7 +500,7 @@ const props = defineProps<{
   composioSuggestionsEnabled?: boolean
 }>()
 
-export type FileAttachment = { label: string; path: string; fsPath: string }
+export type FileAttachment = { label: string; path: string; fsPath: string; source?: 'composio-doc' }
 
 export type ComposerDraftPayload = {
   text: string
@@ -1288,12 +1291,12 @@ function getFolderUploadPercent(group: FolderUploadGroup): number {
   return Math.round((group.processed / group.total) * 100)
 }
 
-function addFileAttachment(filePath: string, customLabel?: string): void {
+function addFileAttachment(filePath: string, customLabel?: string, source?: FileAttachment['source']): void {
   const normalized = filePath.replace(/\\/g, '/')
   if (fileAttachments.value.some((a) => a.fsPath === normalized)) return
   const parts = normalized.split('/').filter(Boolean)
   const label = customLabel?.trim() || parts[parts.length - 1] || normalized
-  fileAttachments.value = [...fileAttachments.value, { label, path: normalized, fsPath: normalized }]
+  fileAttachments.value = [...fileAttachments.value, { label, path: normalized, fsPath: normalized, source }]
 }
 
 function isImageFile(file: File): boolean {
@@ -1769,7 +1772,8 @@ async function applyComposioSuggestion(connector: DirectoryComposioConnector): P
   }
 
   const fileName = composioConnectorDocumentFileName(connector)
-  if (fileAttachments.value.some((attachment) => attachment.label === fileName)) {
+  if (fileAttachments.value.some((attachment) => attachment.label === fileName && attachment.source === 'composio-doc')) {
+    draft.value = removeComposioConnectorMention(draft.value, connector)
     void nextTick(() => inputRef.value?.focus())
     return
   }
@@ -1795,7 +1799,7 @@ async function applyComposioSuggestion(connector: DirectoryComposioConnector): P
       recordAttachmentBatchResult('failure')
       return
     }
-    addFileAttachment(serverPath, fileName)
+    addFileAttachment(serverPath, fileName, 'composio-doc')
     draft.value = removeComposioConnectorMention(draft.value, connector)
     recordAttachmentBatchResult('success')
   } catch {

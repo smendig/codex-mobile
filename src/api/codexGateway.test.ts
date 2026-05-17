@@ -86,6 +86,12 @@ describe('listDirectoryComposioConnectors', () => {
 
     expect(requests).toEqual(['/codex-api/composio/connectors?query=instagram&cursor=50&limit=25'])
   })
+})
+
+describe('logoutDirectoryComposioCli', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
 
   it('posts to the logout endpoint', async () => {
     const requests: Array<{ input: string, method: string }> = []

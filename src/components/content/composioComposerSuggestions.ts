@@ -5,10 +5,15 @@ export function mergeComposioConnectors(
   liveRows: DirectoryComposioConnector[],
 ): DirectoryComposioConnector[] {
   const bySlug = new Map(liveRows.map((row) => [row.slug, row]))
-  return catalog.map((row) => {
+  const catalogSlugs = new Set(catalog.map((row) => row.slug))
+  const merged = catalog.map((row) => {
     const live = bySlug.get(row.slug)
     return live ? { ...row, ...live } : row
   })
+  return [
+    ...merged,
+    ...liveRows.filter((row) => !catalogSlugs.has(row.slug)),
+  ]
 }
 
 export function getComposioSuggestionQuery(value: string): string {
@@ -98,7 +103,7 @@ export function rankComposioSuggestions(rows: DirectoryComposioConnector[], quer
 }
 
 export function removeComposioConnectorMention(value: string, connector: DirectoryComposioConnector): string {
-  const latestMatch = findLatestExactAliasMatch(connector, value.toLowerCase())
+  const latestMatch = findLatestExactAliasMatch(connector, value)
   if (!latestMatch) return value
   const before = value.slice(0, latestMatch.index).replace(/\s+$/u, '')
   const after = value.slice(latestMatch.index + latestMatch.length).replace(/^\s+/u, '')
@@ -135,7 +140,7 @@ export function buildComposioConnectorDocument(
     ? `Use the connected ${resolvedConnector.name} Composio connector (${resolvedConnector.slug}) for this request.`
     : `Use the ${resolvedConnector.name} Composio connector (${resolvedConnector.slug}) for this request.`
   const toolLines = (detail?.tools ?? []).map((tool) => {
-    const description = tool.description.trim()
+    const description = (tool.description ?? '').trim()
     return description ? `${tool.name} (${tool.slug}): ${description}` : `${tool.name} (${tool.slug})`
   })
   const connectionLines = (detail?.connections ?? []).map((connection) => {
@@ -152,7 +157,7 @@ export function buildComposioConnectorDocument(
     instruction,
     '',
     '## Description',
-    resolvedConnector.description.trim() || 'No connector description is available in the local Composio catalog.',
+    (resolvedConnector.description ?? '').trim() || 'No connector description is available in the local Composio catalog.',
     '',
     '## Connector Metadata',
     `- Slug: ${resolvedConnector.slug}`,
