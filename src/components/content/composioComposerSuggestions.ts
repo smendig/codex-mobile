@@ -1,4 +1,4 @@
-import type { DirectoryComposioConnector } from '../../api/codexGateway'
+import type { DirectoryComposioConnector, DirectoryComposioConnectorDetail } from '../../api/codexGateway'
 
 export function mergeComposioConnectors(
   catalog: DirectoryComposioConnector[],
@@ -44,4 +44,76 @@ export function rankComposioSuggestions(rows: DirectoryComposioConnector[], quer
     .filter((row) => row.score > 0)
     .sort((first, second) => second.score - first.score || first.connector.name.localeCompare(second.connector.name))
     .map((row) => row.connector)
+}
+
+function sanitizeComposioFilePart(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, '-')
+    .replace(/^-+|-+$/gu, '')
+    || 'connector'
+}
+
+function formatComposioList(items: string[]): string {
+  const rows = items.map((item) => item.trim()).filter(Boolean)
+  return rows.length > 0 ? rows.map((item) => `- ${item}`).join('\n') : '- None listed'
+}
+
+export function composioConnectorDocumentFileName(connector: DirectoryComposioConnector): string {
+  return `composio-${sanitizeComposioFilePart(connector.slug || connector.name)}.md`
+}
+
+export function buildComposioConnectorDocument(
+  connector: DirectoryComposioConnector,
+  detail?: DirectoryComposioConnectorDetail | null,
+): string {
+  const resolvedConnector = detail?.connector ?? connector
+  const connected = resolvedConnector.activeCount > 0
+  const instruction = connected
+    ? `Use the connected ${resolvedConnector.name} Composio connector (${resolvedConnector.slug}) for this request.`
+    : `Use the ${resolvedConnector.name} Composio connector (${resolvedConnector.slug}) for this request.`
+  const toolLines = (detail?.tools ?? []).map((tool) => {
+    const description = tool.description.trim()
+    return description ? `${tool.name} (${tool.slug}): ${description}` : `${tool.name} (${tool.slug})`
+  })
+  const connectionLines = (detail?.connections ?? []).map((connection) => {
+    const status = connection.status ? `, status: ${connection.status}` : ''
+    const alias = connection.alias ? `, alias: ${connection.alias}` : ''
+    const authScheme = connection.authScheme ? `, auth: ${connection.authScheme}` : ''
+    return `${connection.id || connection.wordId || 'connection'}${status}${alias}${authScheme}`
+  })
+
+  return [
+    `# ${resolvedConnector.name} Composio Connector`,
+    '',
+    '## Instruction',
+    instruction,
+    '',
+    '## Description',
+    resolvedConnector.description.trim() || 'No connector description is available in the local Composio catalog.',
+    '',
+    '## Connector Metadata',
+    `- Slug: ${resolvedConnector.slug}`,
+    `- Tools: ${resolvedConnector.toolsCount}`,
+    `- Triggers: ${resolvedConnector.triggersCount}`,
+    `- Latest version: ${resolvedConnector.latestVersion || 'Not listed'}`,
+    `- Auth modes: ${resolvedConnector.authModes.length > 0 ? resolvedConnector.authModes.join(', ') : 'Not listed'}`,
+    `- No-auth connector: ${resolvedConnector.isNoAuth ? 'yes' : 'no'}`,
+    `- Enabled: ${resolvedConnector.enabled ? 'yes' : 'no'}`,
+    `- Active connections: ${resolvedConnector.activeCount}`,
+    `- Total connections: ${resolvedConnector.totalConnections}`,
+    `- Connection statuses: ${resolvedConnector.connectionStatuses.length > 0 ? resolvedConnector.connectionStatuses.join(', ') : 'None listed'}`,
+    '',
+    '## Available Tools',
+    formatComposioList(toolLines),
+    '',
+    '## Connections',
+    formatComposioList(connectionLines),
+    '',
+    '## Notes For Codex',
+    '- Prefer this Composio connector when the user request matches the connector purpose above.',
+    '- Use the selected Composio CLI skill to inspect exact tool schemas before executing connector actions.',
+    '- If authentication is required and no active connection is listed, ask the user to connect the connector before making authenticated calls.',
+  ].join('\n')
 }

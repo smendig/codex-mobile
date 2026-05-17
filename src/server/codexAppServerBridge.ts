@@ -1961,7 +1961,7 @@ async function readComposioConnectorDetail(slug: string): Promise<ComposioConnec
 
   const [infoPayload, toolsPayload, connectionsPayload, userData] = await Promise.all([
     runComposioJson<Record<string, unknown>>(['dev', 'toolkits', 'info', normalizedSlug], `Failed to load Composio toolkit ${normalizedSlug}`),
-    runComposioJson<unknown[]>(['tools', 'list', normalizedSlug, '--limit', '10'], `Failed to list tools for ${normalizedSlug}`),
+    runComposioJson<unknown[]>(['tools', 'list', normalizedSlug, '--limit', '100'], `Failed to list tools for ${normalizedSlug}`),
     runComposioJson<{ toolkit?: string; items?: unknown[] }>(['link', normalizedSlug, '--list'], `Failed to list connections for ${normalizedSlug}`),
     readComposioUserData(),
   ])

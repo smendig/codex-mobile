@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { DirectoryComposioConnector } from '../../api/codexGateway'
-import { mergeComposioConnectors, rankComposioSuggestions } from './composioComposerSuggestions'
+import {
+  buildComposioConnectorDocument,
+  composioConnectorDocumentFileName,
+  mergeComposioConnectors,
+  rankComposioSuggestions,
+} from './composioComposerSuggestions'
 
 function connector(overrides: Partial<DirectoryComposioConnector>): DirectoryComposioConnector {
   return {
@@ -42,5 +47,23 @@ describe('mergeComposioConnectors', () => {
       [connector({ slug: 'reddit', name: 'Reddit', activeCount: 2, totalConnections: 2 })],
     )
     expect(merged[0]).toMatchObject({ slug: 'reddit', name: 'Reddit', activeCount: 2, totalConnections: 2 })
+  })
+})
+
+describe('buildComposioConnectorDocument', () => {
+  it('builds an attachment document with connector instructions and metadata', () => {
+    const row = connector({
+      slug: 'google-calendar',
+      name: 'Google Calendar',
+      description: 'Manage calendar events.',
+      toolsCount: 3,
+      activeCount: 1,
+      authModes: ['OAUTH2'],
+    })
+
+    expect(composioConnectorDocumentFileName(row)).toBe('composio-google-calendar.md')
+    expect(buildComposioConnectorDocument(row)).toContain('Use the connected Google Calendar Composio connector (google-calendar)')
+    expect(buildComposioConnectorDocument(row)).toContain('Manage calendar events.')
+    expect(buildComposioConnectorDocument(row)).toContain('- Auth modes: OAUTH2')
   })
 })

@@ -82,25 +82,6 @@
         </span>
       </div>
 
-      <div v-if="visibleComposioSuggestions.length > 0" class="thread-composer-composio-suggestions">
-        <button
-          v-for="connector in visibleComposioSuggestions"
-          :key="connector.slug"
-          class="thread-composer-composio-suggestion"
-          type="button"
-          :disabled="isInteractionDisabled"
-          @click="applyComposioSuggestion(connector)"
-        >
-          <span class="thread-composer-composio-suggestion-title">
-            Use {{ connector.name }}
-            <span v-if="connector.activeCount > 0">connected</span>
-          </span>
-          <span class="thread-composer-composio-suggestion-meta">
-            {{ connector.activeCount > 0 ? `${connector.activeCount} connected` : connector.isNoAuth ? 'No auth' : 'Connector available' }}
-          </span>
-        </button>
-      </div>
-
       <div
         class="thread-composer-input-wrap"
         :class="{
@@ -114,6 +95,29 @@
       >
         <div v-if="isDragActive" class="thread-composer-drop-overlay" aria-hidden="true">
           <span class="thread-composer-drop-overlay-copy">Drop images or files</span>
+        </div>
+        <div v-if="visibleComposioSuggestions.length > 0" class="thread-composer-composio-suggestions">
+          <button
+            v-for="connector in visibleComposioSuggestions"
+            :key="connector.slug"
+            class="thread-composer-composio-suggestion"
+            type="button"
+            :disabled="isInteractionDisabled"
+            @mousedown.prevent="applyComposioSuggestion(connector)"
+          >
+            <span class="thread-composer-composio-suggestion-title">
+              Use {{ connector.name }}
+              <span v-if="connector.activeCount > 0">connected</span>
+            </span>
+            <span
+              class="thread-composer-composio-suggestion-meta"
+              :class="statusIconClass(connector)"
+              :title="statusIconTitle(connector)"
+              :aria-label="statusIconTitle(connector)"
+            >
+              {{ statusIconText(connector) }}
+            </span>
+          </button>
         </div>
         <div v-if="isFileMentionOpen" class="thread-composer-file-mentions">
           <template v-if="fileMentionSuggestions.length > 0">
@@ -428,16 +432,23 @@ import {
   getDirectoryComposioStatus,
   getComposerPrompts,
   listDirectoryComposioConnectors,
+  readDirectoryComposioConnector,
   removeComposerPrompt,
   searchComposerFiles,
   uploadFile,
   type ComposerFileSuggestion,
   type ComposerPromptInfo,
   type DirectoryComposioConnector,
+  type DirectoryComposioConnectorDetail,
   type DirectoryComposioStatus,
 } from '../../api/codexGateway'
 import { HARDCODED_COMPOSIO_CONNECTORS } from './composioConnectorCatalog'
-import { mergeComposioConnectors, rankComposioSuggestions } from './composioComposerSuggestions'
+import {
+  buildComposioConnectorDocument,
+  composioConnectorDocumentFileName,
+  mergeComposioConnectors,
+  rankComposioSuggestions,
+} from './composioComposerSuggestions'
 import IconTablerArrowUp from '../icons/IconTablerArrowUp.vue'
 import IconTablerBolt from '../icons/IconTablerBolt.vue'
 import IconTablerFilePencil from '../icons/IconTablerFilePencil.vue'
@@ -1759,16 +1770,63 @@ function ensureComposioSkillSelected(): void {
   ]
 }
 
-function applyComposioSuggestion(connector: DirectoryComposioConnector): void {
+async function applyComposioSuggestion(connector: DirectoryComposioConnector): Promise<void> {
   ensureComposioSkillSelected()
-  const instruction = connector.activeCount > 0
-    ? `Use the connected ${connector.name} Composio connector (${connector.slug}) for this request.`
-    : `Use the ${connector.name} Composio connector (${connector.slug}) for this request.`
-  const normalizedDraft = draft.value.trimEnd()
-  if (!normalizedDraft.toLowerCase().includes(`connector (${connector.slug})`.toLowerCase())) {
-    draft.value = normalizedDraft.length > 0 ? `${normalizedDraft}\n${instruction}` : instruction
+  const fileName = composioConnectorDocumentFileName(connector)
+  if (fileAttachments.value.some((attachment) => attachment.label === fileName)) {
+    void nextTick(() => inputRef.value?.focus())
+    return
   }
-  void nextTick(() => inputRef.value?.focus())
+
+  beginAttachmentBatch(1)
+  const sessionToken = attachmentSessionToken
+  if (!beginAttachmentWork(sessionToken)) return
+  try {
+    let detail: DirectoryComposioConnectorDetail | null = null
+    try {
+      detail = await readDirectoryComposioConnector(connector.slug)
+    } catch {
+      detail = null
+    }
+    const document = buildComposioConnectorDocument(connector, detail)
+    const file = new File([document], fileName, {
+      type: 'text/markdown',
+      lastModified: Date.now(),
+    })
+    const serverPath = await uploadFile(file)
+    if (sessionToken !== attachmentSessionToken) return
+    if (!serverPath) {
+      recordAttachmentBatchResult('failure')
+      return
+    }
+    addFileAttachment(serverPath, fileName)
+    recordAttachmentBatchResult('success')
+  } catch {
+    if (sessionToken === attachmentSessionToken) {
+      recordAttachmentBatchResult('failure')
+    }
+  } finally {
+    finishAttachmentWork(sessionToken)
+    void nextTick(() => inputRef.value?.focus())
+  }
+}
+
+function statusIconText(connector: DirectoryComposioConnector): string {
+  if (connector.activeCount > 0) return '●'
+  if (connector.isNoAuth) return '○'
+  return '+'
+}
+
+function statusIconTitle(connector: DirectoryComposioConnector): string {
+  if (connector.activeCount > 0) return `${connector.activeCount} connected`
+  if (connector.isNoAuth) return 'No auth'
+  return 'Connector available'
+}
+
+function statusIconClass(connector: DirectoryComposioConnector): string {
+  if (connector.activeCount > 0) return 'is-connected'
+  if (connector.isNoAuth) return 'is-no-auth'
+  return 'is-available'
 }
 
 function promptOptionValue(path: string): string {
@@ -2069,7 +2127,7 @@ watch(
 }
 
 .thread-composer-composio-suggestions {
-  @apply mb-2 flex flex-wrap gap-1.5;
+  @apply absolute left-0 right-14 bottom-[calc(100%+8px)] z-30 flex flex-wrap gap-1.5 rounded-xl border border-transparent bg-transparent p-1.5 shadow-none;
 }
 
 .thread-composer-composio-suggestion {
@@ -2081,7 +2139,19 @@ watch(
 }
 
 .thread-composer-composio-suggestion-meta {
-  @apply shrink-0 text-sky-600;
+  @apply inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold leading-none text-sky-600;
+}
+
+.thread-composer-composio-suggestion-meta.is-connected {
+  @apply bg-emerald-100 text-emerald-700;
+}
+
+.thread-composer-composio-suggestion-meta.is-no-auth {
+  @apply bg-zinc-100 text-zinc-500;
+}
+
+.thread-composer-composio-suggestion-meta.is-available {
+  @apply bg-sky-100 text-sky-700;
 }
 
 .thread-composer-rate-limit {

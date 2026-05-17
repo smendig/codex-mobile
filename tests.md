@@ -6137,3 +6137,33 @@ Bold-wrapped plain URLs followed by punctuation render as clean links.
 
 #### Rollback/Cleanup
 - Stop the temporary Vite server if it was only used for this check.
+
+---
+
+### Composio composer connector document attachment
+
+#### Feature/Change Name
+Composer Composio suggestion selection attaches connector documentation instead of inserting instruction text.
+
+#### Prerequisites/Setup
+1. Start local Vite: `pnpm run dev --host 127.0.0.1 --port 4173`.
+2. Composio may be logged in or logged out; logged-out mode should still use the hardcoded connector catalog.
+
+#### Steps
+1. In light theme, open `http://127.0.0.1:4173/#/` or an existing thread.
+2. Type a connector-related word such as `reddit` or `calendar`.
+3. Select one Composio suggestion chip.
+4. Confirm the composer text is not expanded with a copied instruction sentence.
+5. Confirm a file chip appears with a name like `composio-reddit.md`.
+6. Send the message and confirm the request includes the attached connector file plus the `composio-cli` skill.
+7. Repeat in dark theme and confirm the suggestion chips, file chip, and selected skill chip remain readable.
+
+#### Expected Results
+- Picking a Composio suggestion attaches a markdown file containing the connector instruction, description, metadata, available tools when detail fetch succeeds, and connection notes.
+- Re-selecting the same connector does not attach duplicate connector files.
+- The flow still works when Composio is logged out by falling back to catalog documentation.
+- Light and dark themes both render the overlay and attachment chips clearly.
+
+#### Rollback/Cleanup
+- Remove any generated `composio-*.md` attachment chips from the composer before continuing unrelated tests.
+- Stop the temporary Vite server if it was only used for this check.
