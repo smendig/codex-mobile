@@ -450,7 +450,7 @@ import {
   getComposioSuggestionQuery,
   mergeComposioConnectors,
   rankComposioSuggestions,
-  removeComposioSuggestionQuery,
+  removeComposioConnectorMention,
 } from './composioComposerSuggestions'
 import IconTablerArrowUp from '../icons/IconTablerArrowUp.vue'
 import IconTablerBolt from '../icons/IconTablerBolt.vue'
@@ -1760,7 +1760,7 @@ async function refreshComposioSuggestions(force = false): Promise<void> {
 
 async function applyComposioSuggestion(connector: DirectoryComposioConnector): Promise<void> {
   if (connector.activeCount <= 0 && !connector.isNoAuth) {
-    draft.value = removeComposioSuggestionQuery(draft.value)
+    draft.value = removeComposioConnectorMention(draft.value, connector)
     emit('open-composio-connector', connector.slug)
     void nextTick(() => inputRef.value?.focus())
     return
@@ -1794,7 +1794,7 @@ async function applyComposioSuggestion(connector: DirectoryComposioConnector): P
       return
     }
     addFileAttachment(serverPath, fileName)
-    draft.value = removeComposioSuggestionQuery(draft.value)
+    draft.value = removeComposioConnectorMention(draft.value, connector)
     recordAttachmentBatchResult('success')
   } catch {
     if (sessionToken === attachmentSessionToken) {

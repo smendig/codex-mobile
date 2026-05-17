@@ -6,6 +6,7 @@ import {
   getComposioSuggestionQuery,
   mergeComposioConnectors,
   rankComposioSuggestions,
+  removeComposioConnectorMention,
   removeComposioSuggestionQuery,
 } from './composioComposerSuggestions'
 
@@ -40,19 +41,38 @@ describe('rankComposioSuggestions', () => {
   it('returns empty results for too-short generic text', () => {
     expect(rankComposioSuggestions([connector({ slug: 'reddit', name: 'Reddit' })], 'r')).toEqual([])
   })
+
+  it('matches exact connector mentions anywhere in the draft and prefers the latest mention', () => {
+    const rows = [
+      connector({ slug: 'gmail', name: 'Gmail', toolsCount: 10 }),
+      connector({ slug: 'reddit', name: 'Reddit', toolsCount: 10 }),
+    ]
+    expect(rankComposioSuggestions(rows, 'lets make reddit bett')[0]?.slug).toBe('reddit')
+    expect(rankComposioSuggestions(rows, 'reddit first then GMAIL later')[0]?.slug).toBe('gmail')
+  })
+
+  it('does not match connector names inside larger words', () => {
+    const rows = [connector({ slug: 'reddit', name: 'Reddit' })]
+    expect(rankComposioSuggestions(rows, 'redditor')).toEqual([])
+  })
 })
 
 describe('getComposioSuggestionQuery', () => {
-  it('uses only the current trailing connector word', () => {
-    expect(getComposioSuggestionQuery('gmail calendar reddit')).toBe('reddit')
-    expect(getComposioSuggestionQuery('gmail calendar reddit ')).toBe('reddit')
-    expect(getComposioSuggestionQuery('use reddit, then gmail')).toBe('gmail')
+  it('normalizes the current draft for exact connector matching', () => {
+    expect(getComposioSuggestionQuery('Gmail calendar reddit')).toBe('gmail calendar reddit')
+    expect(getComposioSuggestionQuery('lets make reddit bett ')).toBe('lets make reddit bett')
   })
 
   it('removes the trailing connector word after selecting a suggestion', () => {
     expect(removeComposioSuggestionQuery('gmail calendar reddit')).toBe('gmail calendar')
     expect(removeComposioSuggestionQuery('gmail calendar reddit ')).toBe('gmail calendar')
     expect(removeComposioSuggestionQuery('reddit')).toBe('')
+  })
+
+  it('removes the matched connector mention instead of the last word', () => {
+    const reddit = connector({ slug: 'reddit', name: 'Reddit' })
+    expect(removeComposioConnectorMention('lets make reddit bett', reddit)).toBe('lets make bett')
+    expect(removeComposioConnectorMention('redditor reddit', reddit)).toBe('redditor')
   })
 })
 

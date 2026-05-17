@@ -11,49 +11,81 @@ export function mergeComposioConnectors(
   })
 }
 
-function normalizeSuggestionQuery(value: string): string[] {
-  return value
-    .toLowerCase()
-    .split(/[^a-z0-9]+/u)
-    .map((part) => part.trim())
-    .filter((part) => part.length >= 2)
-}
-
 export function getComposioSuggestionQuery(value: string): string {
-  const beforeCursor = value.replace(/\s+$/u, '')
-  const match = beforeCursor.match(/[a-z0-9][a-z0-9_-]*$/iu)
-  return match?.[0]?.toLowerCase() ?? ''
+  return value.trim().toLowerCase()
 }
 
 export function removeComposioSuggestionQuery(value: string): string {
   return value.replace(/(?:^|\s+)[a-z0-9][a-z0-9_-]*\s*$/iu, '')
 }
 
-function scoreComposioSuggestion(connector: DirectoryComposioConnector, tokens: string[], fullQuery: string): number {
-  const haystack = `${connector.name} ${connector.slug} ${connector.description}`.toLowerCase()
-  let score = 0
-  for (const token of tokens) {
-    if (connector.slug === token || connector.name.toLowerCase() === token) score += 500
-    else if (connector.slug.startsWith(token) || connector.name.toLowerCase().startsWith(token)) score += 250
-    else if (haystack.includes(token)) score += 100
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
+function connectorAliases(connector: DirectoryComposioConnector): string[] {
+  const aliases = [
+    connector.slug,
+    connector.name,
+    connector.slug.replace(/[_-]+/gu, ' '),
+    connector.name.replace(/[_-]+/gu, ' '),
+  ]
+  return [...new Set(aliases.map((alias) => alias.trim().toLowerCase()).filter((alias) => alias.length >= 2))]
+}
+
+function aliasPattern(alias: string): RegExp {
+  const separatorAware = alias
+    .split(/[\s_-]+/u)
+    .filter(Boolean)
+    .map(escapeRegex)
+    .join('[\\s_-]+')
+  return new RegExp(`(^|[^a-z0-9])(${separatorAware})(?=$|[^a-z0-9])`, 'giu')
+}
+
+function findLatestExactAliasMatch(connector: DirectoryComposioConnector, fullQuery: string): { index: number; length: number } | null {
+  let latest: { index: number; length: number } | null = null
+  for (const alias of connectorAliases(connector)) {
+    const pattern = aliasPattern(alias)
+    for (const match of fullQuery.matchAll(pattern)) {
+      const matched = match[2] ?? ''
+      const index = (match.index ?? 0) + ((match[1] ?? '').length)
+      if (!latest || index > latest.index || (index === latest.index && matched.length > latest.length)) {
+        latest = { index, length: matched.length }
+      }
+    }
   }
-  if (fullQuery.includes(connector.slug.toLowerCase()) || fullQuery.includes(connector.name.toLowerCase())) score += 150
-  if (score <= 0) return 0
-  if (connector.activeCount > 0) score += 10_000
-  else if (connector.totalConnections > 0) score += 2_500
-  else if (connector.isNoAuth) score += 500
+  return latest
+}
+
+function scoreComposioSuggestion(connector: DirectoryComposioConnector, fullQuery: string): number {
+  const latestMatch = findLatestExactAliasMatch(connector, fullQuery)
+  if (!latestMatch) return 0
+  let score = latestMatch.index * 100_000 + latestMatch.length * 1_000
+  if (connector.activeCount > 0) score += 500
+  else if (connector.totalConnections > 0) score += 250
+  else if (connector.isNoAuth) score += 100
   score += connector.toolsCount
   return score
 }
 
 export function rankComposioSuggestions(rows: DirectoryComposioConnector[], query: string): DirectoryComposioConnector[] {
-  const tokens = normalizeSuggestionQuery(query)
-  if (tokens.length === 0) return []
+  const fullQuery = query.trim().toLowerCase()
+  if (fullQuery.length < 2) return []
   return rows
-    .map((connector) => ({ connector, score: scoreComposioSuggestion(connector, tokens, query.toLowerCase()) }))
+    .map((connector) => ({ connector, score: scoreComposioSuggestion(connector, fullQuery) }))
     .filter((row) => row.score > 0)
     .sort((first, second) => second.score - first.score || first.connector.name.localeCompare(second.connector.name))
     .map((row) => row.connector)
+}
+
+export function removeComposioConnectorMention(value: string, connector: DirectoryComposioConnector): string {
+  const latestMatch = findLatestExactAliasMatch(connector, value.toLowerCase())
+  if (!latestMatch) return value
+  const before = value.slice(0, latestMatch.index).replace(/\s+$/u, '')
+  const after = value.slice(latestMatch.index + latestMatch.length).replace(/^\s+/u, '')
+  if (!before) return after
+  if (!after) return before
+  return `${before} ${after}`
 }
 
 function sanitizeComposioFilePart(value: string): string {
