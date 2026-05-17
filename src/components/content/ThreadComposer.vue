@@ -96,29 +96,6 @@
         <div v-if="isDragActive" class="thread-composer-drop-overlay" aria-hidden="true">
           <span class="thread-composer-drop-overlay-copy">Drop images or files</span>
         </div>
-        <div v-if="visibleComposioSuggestions.length > 0" class="thread-composer-composio-suggestions">
-          <button
-            v-for="connector in visibleComposioSuggestions"
-            :key="connector.slug"
-            class="thread-composer-composio-suggestion"
-            type="button"
-            :disabled="isInteractionDisabled"
-            @mousedown.prevent="applyComposioSuggestion(connector)"
-          >
-            <span class="thread-composer-composio-suggestion-title">
-              Use {{ connector.name }}
-              <span v-if="connector.activeCount > 0">connected</span>
-            </span>
-            <span
-              class="thread-composer-composio-suggestion-meta"
-              :class="statusIconClass(connector)"
-              :title="statusIconTitle(connector)"
-              :aria-label="statusIconTitle(connector)"
-            >
-              {{ statusIconText(connector) }}
-            </span>
-          </button>
-        </div>
         <div v-if="isFileMentionOpen" class="thread-composer-file-mentions">
           <template v-if="fileMentionSuggestions.length > 0">
             <button
@@ -277,6 +254,30 @@
               />
             </button>
           </div>
+        </div>
+
+        <div v-if="visibleComposioSuggestions.length > 0" class="thread-composer-composio-suggestions">
+          <button
+            v-for="connector in visibleComposioSuggestions"
+            :key="connector.slug"
+            class="thread-composer-composio-suggestion"
+            type="button"
+            :disabled="isInteractionDisabled"
+            @mousedown.prevent="applyComposioSuggestion(connector)"
+          >
+            <span class="thread-composer-composio-suggestion-title">
+              Use {{ connector.name }}
+              <span v-if="connector.activeCount > 0">connected</span>
+            </span>
+            <span
+              class="thread-composer-composio-suggestion-meta"
+              :class="statusIconClass(connector)"
+              :title="statusIconTitle(connector)"
+              :aria-label="statusIconTitle(connector)"
+            >
+              {{ statusIconText(connector) }}
+            </span>
+          </button>
         </div>
 
         <template v-if="!isDictationRecording">
@@ -654,7 +655,8 @@ const visibleComposioSuggestions = computed(() => {
   if (isFileMentionOpen.value) return []
   const query = getComposioSuggestionQuery(draft.value)
   if (query.length < 2) return []
-  return rankComposioSuggestions(composioConnectors.value, query).slice(0, COMPOSIO_SUGGESTION_LIMIT)
+  const rows = composioConnectors.value.length > 0 ? composioConnectors.value : HARDCODED_COMPOSIO_CONNECTORS
+  return rankComposioSuggestions(rows, query).slice(0, COMPOSIO_SUGGESTION_LIMIT)
 })
 const skillDropdownOptions = computed(() =>
   [
@@ -2112,7 +2114,7 @@ watch(
 }
 
 .thread-composer-composio-suggestions {
-  @apply absolute left-0 right-14 bottom-[calc(100%+8px)] z-30 flex flex-wrap gap-1.5 rounded-xl border border-transparent bg-transparent p-1.5 shadow-none;
+  @apply flex min-w-0 max-w-[min(34rem,48vw)] flex-wrap items-center gap-1.5 overflow-visible;
 }
 
 .thread-composer-composio-suggestion {

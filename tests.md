@@ -6158,7 +6158,8 @@ Composer Composio suggestion selection attaches connector documentation instead 
 6. Confirm the clicked connector word is removed from the draft, leaving earlier words intact.
 7. Confirm the `composio-cli` skill is not selected automatically.
 8. Add a trailing space after the last connector word and confirm suggestions still target that just-completed last word.
-9. Repeat in dark theme and confirm the suggestion chips and file chip remain readable.
+9. Confirm suggestion chips appear in the bottom controls row beside the add/model/skills/reasoning controls, not over the text area.
+10. Repeat in dark theme and confirm the suggestion chips and file chip remain readable.
 
 #### Expected Results
 - Picking a Composio suggestion attaches a markdown file containing the connector instruction, description, metadata, available tools when detail fetch succeeds, and connection notes.
@@ -6167,7 +6168,7 @@ Composer Composio suggestion selection attaches connector documentation instead 
 - Picking a suggestion does not automatically add the `composio-cli` skill chip.
 - Re-selecting the same connector does not attach duplicate connector files.
 - The flow still works when Composio is logged out by falling back to catalog documentation.
-- Light and dark themes both render the overlay and attachment chips clearly.
+- Light and dark themes both render the controls-row suggestions and attachment chips clearly.
 
 #### Rollback/Cleanup
 - Remove any generated `composio-*.md` attachment chips from the composer before continuing unrelated tests.
