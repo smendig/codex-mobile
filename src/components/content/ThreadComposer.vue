@@ -82,6 +82,25 @@
         </span>
       </div>
 
+      <div v-if="visibleComposioSuggestions.length > 0" class="thread-composer-composio-suggestions">
+        <button
+          v-for="connector in visibleComposioSuggestions"
+          :key="connector.slug"
+          class="thread-composer-composio-suggestion"
+          type="button"
+          :disabled="isInteractionDisabled"
+          @click="applyComposioSuggestion(connector)"
+        >
+          <span class="thread-composer-composio-suggestion-title">
+            Use {{ connector.name }}
+            <span v-if="connector.activeCount > 0">connected</span>
+          </span>
+          <span class="thread-composer-composio-suggestion-meta">
+            {{ connector.activeCount > 0 ? `${connector.activeCount} connected` : connector.isNoAuth ? 'No auth' : 'Connector available' }}
+          </span>
+        </button>
+      </div>
+
       <div
         class="thread-composer-input-wrap"
         :class="{
@@ -406,13 +425,19 @@ import { useMobile } from '../../composables/useMobile'
 import { useUiLanguage } from '../../composables/useUiLanguage'
 import {
   createComposerPrompt,
+  getDirectoryComposioStatus,
   getComposerPrompts,
+  listDirectoryComposioConnectors,
   removeComposerPrompt,
   searchComposerFiles,
   uploadFile,
   type ComposerFileSuggestion,
   type ComposerPromptInfo,
+  type DirectoryComposioConnector,
+  type DirectoryComposioStatus,
 } from '../../api/codexGateway'
+import { HARDCODED_COMPOSIO_CONNECTORS } from './composioConnectorCatalog'
+import { mergeComposioConnectors, rankComposioSuggestions } from './composioComposerSuggestions'
 import IconTablerArrowUp from '../icons/IconTablerArrowUp.vue'
 import IconTablerBolt from '../icons/IconTablerBolt.vue'
 import IconTablerFilePencil from '../icons/IconTablerFilePencil.vue'
@@ -514,6 +539,9 @@ type AttachmentBatchStats = {
 const CONTEXT_WINDOW_BASELINE_TOKENS = 12000
 const PASTED_TEXT_FILE_THRESHOLD = 2000
 const PROMPT_OPTION_PREFIX = 'prompt:'
+const COMPOSIO_SKILL_PATH = '/Users/igor/.codex/skills/shared_skills/composio-cli/SKILL.md'
+const COMPOSIO_SUGGESTION_LIMIT = 3
+const COMPOSIO_REFRESH_INTERVAL_MS = 30_000
 
 const draft = ref('')
 const selectedImages = ref<SelectedImage[]>([])
@@ -521,6 +549,8 @@ const selectedSkills = ref<SkillItem[]>([])
 const savedPrompts = ref<ComposerPromptInfo[]>([])
 const fileAttachments = ref<FileAttachment[]>([])
 const folderUploadGroups = ref<FolderUploadGroup[]>([])
+const composioStatus = ref<DirectoryComposioStatus | null>(null)
+const composioConnectors = ref<DirectoryComposioConnector[]>(HARDCODED_COMPOSIO_CONNECTORS)
 
 const dictationFeedback = ref('')
 const pendingAttachmentCount = ref(0)
@@ -581,6 +611,7 @@ let fileMentionDebounceTimer: ReturnType<typeof setTimeout> | null = null
 let isHoldPressActive = false
 let dragDepth = 0
 let attachmentSessionToken = 0
+let composioLoadStartedAt = 0
 const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
 const DRAFT_STORAGE_PREFIX = 'codex-web-local.thread-draft.v1.'
 let lastActiveThreadId = ''
@@ -607,6 +638,12 @@ const isPlanModeWaitingForModel = computed(() =>
 )
 
 const selectedSkillPaths = computed(() => selectedSkills.value.map((s) => s.path))
+const visibleComposioSuggestions = computed(() => {
+  if (isFileMentionOpen.value) return []
+  const query = draft.value.trim().toLowerCase()
+  if (query.length < 2) return []
+  return rankComposioSuggestions(composioConnectors.value, query).slice(0, COMPOSIO_SUGGESTION_LIMIT)
+})
 const skillDropdownOptions = computed(() =>
   [
     ...(props.skills ?? []).map((s) => {
@@ -1688,6 +1725,52 @@ async function reloadPrompts(): Promise<void> {
   savedPrompts.value = await getComposerPrompts()
 }
 
+async function refreshComposioSuggestions(force = false): Promise<void> {
+  const now = Date.now()
+  if (!force && composioLoadStartedAt > 0 && now - composioLoadStartedAt < COMPOSIO_REFRESH_INTERVAL_MS) return
+  composioLoadStartedAt = now
+  try {
+    const status = await getDirectoryComposioStatus()
+    composioStatus.value = status
+    if (!status.available || !status.authenticated) {
+      composioConnectors.value = HARDCODED_COMPOSIO_CONNECTORS
+      return
+    }
+    const page = await listDirectoryComposioConnectors('', null, 1000)
+    composioConnectors.value = mergeComposioConnectors(HARDCODED_COMPOSIO_CONNECTORS, page.data)
+  } catch {
+    composioConnectors.value = HARDCODED_COMPOSIO_CONNECTORS
+  }
+}
+
+function ensureComposioSkillSelected(): void {
+  if (selectedSkills.value.some((skill) => skill.path === COMPOSIO_SKILL_PATH)) return
+  const existing = (props.skills ?? []).find((skill) => skill.path === COMPOSIO_SKILL_PATH)
+  selectedSkills.value = [
+    ...selectedSkills.value,
+    existing ?? {
+      name: 'composio-cli',
+      displayName: 'composio-cli',
+      description: 'Use Composio CLI connectors',
+      path: COMPOSIO_SKILL_PATH,
+      scope: 'user',
+      enabled: true,
+    },
+  ]
+}
+
+function applyComposioSuggestion(connector: DirectoryComposioConnector): void {
+  ensureComposioSkillSelected()
+  const instruction = connector.activeCount > 0
+    ? `Use the connected ${connector.name} Composio connector (${connector.slug}) for this request.`
+    : `Use the ${connector.name} Composio connector (${connector.slug}) for this request.`
+  const normalizedDraft = draft.value.trimEnd()
+  if (!normalizedDraft.toLowerCase().includes(`connector (${connector.slug})`.toLowerCase())) {
+    draft.value = normalizedDraft.length > 0 ? `${normalizedDraft}\n${instruction}` : instruction
+  }
+  void nextTick(() => inputRef.value?.focus())
+}
+
 function promptOptionValue(path: string): string {
   return `${PROMPT_OPTION_PREFIX}${path}`
 }
@@ -1858,6 +1941,9 @@ watch([draft, selectedImages, fileAttachments, selectedSkills], () => {
 
 watch(draft, () => {
   queueComposerOverflowMeasurement()
+  if (draft.value.trim().length >= 2) {
+    void refreshComposioSuggestions()
+  }
 })
 
 watch(
@@ -1980,6 +2066,22 @@ watch(
 
 .thread-composer-skill-chip-remove {
   @apply ml-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border-0 bg-transparent text-emerald-500 transition hover:bg-emerald-200 hover:text-emerald-700 text-xs leading-none p-0;
+}
+
+.thread-composer-composio-suggestions {
+  @apply mb-2 flex flex-wrap gap-1.5;
+}
+
+.thread-composer-composio-suggestion {
+  @apply inline-flex max-w-full items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-left text-xs text-sky-800 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.thread-composer-composio-suggestion-title {
+  @apply truncate font-medium;
+}
+
+.thread-composer-composio-suggestion-meta {
+  @apply shrink-0 text-sky-600;
 }
 
 .thread-composer-rate-limit {

@@ -241,6 +241,12 @@ export type DirectoryComposioInstallResult = {
   output: string
 }
 
+export type DirectoryComposioLogoutResult = {
+  ok: boolean
+  command: string
+  output: string
+}
+
 type DirectoryComposioConnectorPage = {
   data: DirectoryComposioConnector[]
   nextCursor: string | null
@@ -2374,6 +2380,16 @@ export async function installDirectoryComposioCli(): Promise<DirectoryComposioIn
     throw new Error(`Failed to install Composio CLI (${response.status})`)
   }
   return await response.json() as DirectoryComposioInstallResult
+}
+
+export async function logoutDirectoryComposioCli(): Promise<DirectoryComposioLogoutResult> {
+  const response = await fetch('/codex-api/composio/logout', {
+    method: 'POST',
+  })
+  if (!response.ok) {
+    throw new Error(`Failed to logout Composio CLI (${response.status})`)
+  }
+  return await response.json() as DirectoryComposioLogoutResult
 }
 
 export async function getAccountRateLimitsResponse(): Promise<GetAccountRateLimitsResponse> {

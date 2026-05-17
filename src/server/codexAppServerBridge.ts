@@ -216,6 +216,12 @@ type ComposioInstallResult = {
   output: string
 }
 
+type ComposioLogoutResult = {
+  ok: boolean
+  command: string
+  output: string
+}
+
 type ComposioConnectorPage = {
   data: ComposioConnectorSummary[]
   nextCursor: string | null
@@ -2071,6 +2077,27 @@ async function installComposioCli(): Promise<ComposioInstallResult> {
   return {
     ok: true,
     command: `curl -fsSL ${installScriptUrl} | bash`,
+    output,
+  }
+}
+
+async function logoutComposioCli(): Promise<ComposioLogoutResult> {
+  const invocation = resolveComposioInvocation(['logout'])
+  if (!invocation) {
+    throw new Error('Composio CLI is not installed')
+  }
+  const result = spawnSync(invocation.command, invocation.args, {
+    encoding: 'utf8',
+    env: process.env,
+    windowsHide: true,
+  })
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`.trim()
+  if (result.error || result.status !== 0) {
+    throw new Error(output || result.error?.message || 'Failed to logout Composio CLI')
+  }
+  return {
+    ok: true,
+    command: invocation.displayCommand,
     output,
   }
 }
@@ -6901,6 +6928,15 @@ export function createCodexBridgeMiddleware(): CodexBridgeMiddleware {
           setJson(res, 200, await installComposioCli())
         } catch (error) {
           setJson(res, 500, { error: getErrorMessage(error, 'Failed to install Composio CLI') })
+        }
+        return
+      }
+
+      if (req.method === 'POST' && url.pathname === '/codex-api/composio/logout') {
+        try {
+          setJson(res, 200, await logoutComposioCli())
+        } catch (error) {
+          setJson(res, 500, { error: getErrorMessage(error, 'Failed to logout Composio CLI') })
         }
         return
       }

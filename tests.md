@@ -336,6 +336,77 @@ Rollback/cleanup:
 
 ---
 
+### Composio panel shows hardcoded connector preview without install or login
+
+#### Feature/Change Name
+Composio connector catalog preview and live-status merge in the directory panel.
+
+#### Prerequisites/Setup
+1. Dev server running (`pnpm run dev --host 127.0.0.1 --port 4173`)
+2. Open the Skills and Apps directory route with the Composio tab available
+3. Be able to switch between light theme and dark theme
+4. For the unauthenticated preview path, either use an environment without the Composio CLI or log out of Composio before opening the tab
+
+#### Steps
+1. In light theme, open the Composio tab.
+2. If Composio is not installed, confirm the preview hero still renders, the Install Composio button is visible, and connector cards still load from the hardcoded catalog.
+3. If Composio is installed but logged out, confirm the preview hero renders, the Login to Composio button is visible, and the connector list is still searchable.
+4. Search for `gmail` and confirm Gmail appears with tool counts from the hardcoded catalog.
+5. Clear the search and click Load more; confirm more connector cards render without another server round-trip.
+6. Open a preview connector Details modal and confirm overview data renders even before install/login.
+7. Log into Composio, refresh the Composio tab, and confirm the same catalog now shows merged live connection badges and actions where applicable.
+8. Click the Logout button in the Composio workspace card or connector detail footer.
+9. Confirm the panel returns to preview mode while still showing the hardcoded connector catalog.
+10. Switch to dark theme and repeat steps 1-9.
+
+#### Expected Results
+- The Composio tab always renders connector cards from the hardcoded TypeScript catalog, even when the CLI is missing or logged out.
+- Install/login state changes only the hero/actions and any merged live status, not whether the catalog is visible.
+- Logout is available directly from the authenticated Composio panel and returns the UI to the logged-out preview state.
+- Search and Load more work client-side against the full hardcoded catalog.
+- Preview Details works before install/login, and live Details still works after authentication.
+- Light theme and dark theme both render the preview and authenticated states correctly.
+
+#### Rollback/Cleanup
+- If you logged into Composio only for this test, log out afterward if desired.
+
+---
+
+### Composer suggests matching Composio connectors while typing
+
+#### Feature/Change Name
+Realtime Composio connector suggestions in the chat composer.
+
+#### Prerequisites/Setup
+1. Dev server running (`pnpm run dev --host 127.0.0.1 --port 4173`)
+2. Open any thread with the normal composer visible
+3. Light theme and dark theme available
+4. For connected ranking checks, have at least one active Composio connector such as Reddit
+
+#### Steps
+1. In light theme, focus the composer and type `reddit`.
+2. Confirm a connector suggestion strip appears above the textarea.
+3. Confirm Reddit is shown and, if connected, the suggestion copy indicates it is connected.
+4. Click the Reddit suggestion.
+5. Confirm the `composio-cli` skill chip is added to the composer and a connector-specific instruction line is appended to the draft.
+6. Clear the draft, type another connector name such as `gmail`, and confirm the matching suggestion updates while typing.
+7. Type `@` to open file mentions and confirm the Composio suggestion strip does not interfere with the file mention popup.
+8. Log out of Composio and repeat steps 1-7.
+9. Switch to dark theme and repeat steps 1-8.
+
+#### Expected Results
+- Connector suggestions appear in realtime from normal draft text without requiring `@` syntax.
+- Matching connected connectors rank ahead of unconnected matches.
+- After Composio logout, matching suggestions still appear from the hardcoded catalog but without connected-state emphasis.
+- Clicking a suggestion attaches the Composio skill and appends a connector-specific instruction to the draft.
+- File mention behavior remains intact and takes precedence when the `@` popup is open.
+- Light theme and dark theme both render the suggestion strip correctly.
+
+#### Rollback/Cleanup
+- Remove the appended connector instruction and skill chip if you do not want to send them.
+
+---
+
 ### Automation editor scrolls on small viewports
 
 #### Feature/Change Name
