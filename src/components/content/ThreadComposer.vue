@@ -522,6 +522,7 @@ export type ThreadComposerExposed = {
 const emit = defineEmits<{
   submit: [payload: SubmitPayload]
   interrupt: []
+  'open-composio-connector': [slug: string]
   'update:selected-collaboration-mode': [mode: CollaborationModeKind]
   'update:selected-model': [modelId: string]
   'update:selected-reasoning-effort': [effort: ReasoningEffort | '']
@@ -1758,6 +1759,13 @@ async function refreshComposioSuggestions(force = false): Promise<void> {
 }
 
 async function applyComposioSuggestion(connector: DirectoryComposioConnector): Promise<void> {
+  if (connector.activeCount <= 0 && !connector.isNoAuth) {
+    draft.value = removeComposioSuggestionQuery(draft.value)
+    emit('open-composio-connector', connector.slug)
+    void nextTick(() => inputRef.value?.focus())
+    return
+  }
+
   const fileName = composioConnectorDocumentFileName(connector)
   if (fileAttachments.value.some((attachment) => attachment.label === fileName)) {
     void nextTick(() => inputRef.value?.focus())

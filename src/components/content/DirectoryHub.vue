@@ -831,6 +831,11 @@ function tabFromRoute(): DirectoryTab {
   return isDirectoryTab(route.query.tab) ? route.query.tab : 'skills'
 }
 
+function composioConnectorSlugFromRoute(): string {
+  const raw = route.query.connector
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
 const activeTab = ref<DirectoryTab>(tabFromRoute())
 const methodSet = ref<Set<string>>(new Set())
 const methodsLoaded = ref(false)
@@ -858,6 +863,7 @@ const pluginError = ref('')
 const appError = ref('')
 const composioError = ref('')
 const mcpError = ref('')
+const lastRouteComposioConnectorSlug = ref('')
 const selectedPlugin = ref<DirectoryPluginSummary | null>(null)
 const selectedPluginDetail = ref<DirectoryPluginDetail | null>(null)
 const isPluginDetailOpen = ref(false)
@@ -1359,11 +1365,11 @@ async function loadComposio(): Promise<void> {
     if (!status.available || !status.authenticated) {
       composioConnectors.value = HARDCODED_COMPOSIO_CONNECTORS
       composioTotal.value = HARDCODED_COMPOSIO_CONNECTORS.length
-      return
+    } else {
+      const page = await listDirectoryComposioConnectors('', null, 1000)
+      composioConnectors.value = mergeComposioConnectors(HARDCODED_COMPOSIO_CONNECTORS, page.data)
+      composioTotal.value = composioConnectors.value.length
     }
-    const page = await listDirectoryComposioConnectors('', null, 1000)
-    composioConnectors.value = mergeComposioConnectors(HARDCODED_COMPOSIO_CONNECTORS, page.data)
-    composioTotal.value = composioConnectors.value.length
   } catch (error) {
     composioError.value = error instanceof Error ? error.message : 'Failed to load Composio connectors'
     composioConnectors.value = HARDCODED_COMPOSIO_CONNECTORS
@@ -1371,6 +1377,7 @@ async function loadComposio(): Promise<void> {
   } finally {
     isLoadingComposio.value = false
   }
+  await openRouteComposioConnector()
 }
 
 async function loadMoreComposio(): Promise<void> {
@@ -1480,6 +1487,7 @@ async function openComposioDetail(slug: string): Promise<void> {
   selectedComposioDetail.value = null
   try {
     const local = composioConnectors.value.find((connector) => connector.slug === slug)
+      ?? HARDCODED_COMPOSIO_CONNECTORS.find((connector) => connector.slug === slug)
     if (!composioStatus.value?.available || !composioStatus.value?.authenticated) {
       if (!local) throw new Error(`Unknown Composio connector: ${slug}`)
       selectedComposioDetail.value = buildLocalComposioDetail(local)
@@ -1495,6 +1503,15 @@ async function openComposioDetail(slug: string): Promise<void> {
 
 function closeComposioDetail(): void {
   isComposioDetailOpen.value = false
+}
+
+async function openRouteComposioConnector(): Promise<void> {
+  if (activeTab.value !== 'composio') return
+  const slug = composioConnectorSlugFromRoute()
+  if (!slug || lastRouteComposioConnectorSlug.value === slug) return
+  lastRouteComposioConnectorSlug.value = slug
+  composioSearchQuery.value = slug
+  await openComposioDetail(slug)
 }
 
 async function startComposioConnect(connector: DirectoryComposioConnector): Promise<void> {
@@ -1683,6 +1700,12 @@ watch(() => route.query.tab, () => {
   if (route.name !== 'skills') return
   const tab = tabFromRoute()
   if (activeTab.value !== tab) activeTab.value = tab
+  else if (tab === 'composio') void openRouteComposioConnector()
+})
+watch(() => route.query.connector, () => {
+  if (route.name !== 'skills' || activeTab.value !== 'composio') return
+  lastRouteComposioConnectorSlug.value = ''
+  void openRouteComposioConnector()
 })
 watch(composioSearchQuery, () => {
   if (activeTab.value !== 'composio') return

@@ -6158,14 +6158,16 @@ Composer Composio suggestion selection attaches connector documentation instead 
 6. Confirm the clicked connector word is removed from the draft, leaving earlier words intact.
 7. Confirm the `composio-cli` skill is not selected automatically.
 8. Add a trailing space after the last connector word and confirm suggestions still target that just-completed last word.
-9. Confirm suggestion chips appear in the bottom controls row beside the add/model/skills/reasoning controls, not over the text area.
-10. Repeat in dark theme and confirm the suggestion chips and file chip remain readable.
+9. For an unconnected connector, click its suggestion and confirm the app opens the Composio directory tab with that connector detail panel visible for install/login/connect.
+10. Confirm suggestion chips appear in the bottom controls row beside the add/model/skills/reasoning controls, not over the text area.
+11. Repeat in dark theme and confirm the suggestion chips, directory panel, and file chip remain readable.
 
 #### Expected Results
 - Picking a Composio suggestion attaches a markdown file containing the connector instruction, description, metadata, available tools when detail fetch succeeds, and connection notes.
 - Suggestions are ranked from only the current trailing connector word, so `gmail calendar reddit` suggests Reddit instead of earlier words.
 - The selected trailing connector word is removed from the draft after its file is attached.
 - Picking a suggestion does not automatically add the `composio-cli` skill chip.
+- Unconnected connectors open the Composio connector detail panel instead of attaching a docs file immediately.
 - Re-selecting the same connector does not attach duplicate connector files.
 - The flow still works when Composio is logged out by falling back to catalog documentation.
 - Light and dark themes both render the controls-row suggestions and attachment chips clearly.

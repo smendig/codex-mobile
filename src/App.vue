@@ -942,7 +942,8 @@
                   @update:selected-collaboration-mode="onSelectCollaborationMode"
                   @update:selected-model="onSelectModel"
                   @update:selected-reasoning-effort="onSelectReasoningEffort"
-                  @update:selected-speed-mode="onSelectSpeedMode" />
+                  @update:selected-speed-mode="onSelectSpeedMode"
+                  @open-composio-connector="onOpenComposioConnectorFromComposer" />
               </div>
             </div>
           </template>
@@ -1027,6 +1028,7 @@
                     @submit="onSubmitThreadMessage" @update:selected-model="onSelectModel"
                     @update:selected-reasoning-effort="onSelectReasoningEffort"
                     @update:selected-speed-mode="onSelectSpeedMode"
+                    @open-composio-connector="onOpenComposioConnectorFromComposer"
                     @interrupt="onInterruptTurn" />
                 </div>
               </template>
@@ -1751,6 +1753,12 @@ function dismissFirstLaunchPluginsCard(): void {
 function onOpenPluginsHomeCard(): void {
   dismissFirstLaunchPluginsCard()
   void router.push({ name: 'skills', query: { tab: 'plugins' } })
+}
+
+function onOpenComposioConnectorFromComposer(slug: string): void {
+  const normalizedSlug = slug.trim()
+  if (!normalizedSlug) return
+  void router.push({ name: 'skills', query: { tab: 'composio', connector: normalizedSlug } })
 }
 
 const threadContextBadgeState = computed(() => {
