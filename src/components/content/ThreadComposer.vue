@@ -309,7 +309,7 @@
               @keydown.space.prevent="applyComposioSuggestion(connector)"
             >
               <span class="thread-composer-composio-suggestion-title">
-                Use {{ connector.name }}
+                {{ connector.name }}
               </span>
               <span
                 class="thread-composer-composio-suggestion-meta"
