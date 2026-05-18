@@ -567,6 +567,7 @@ const fileAttachments = ref<FileAttachment[]>([])
 const folderUploadGroups = ref<FolderUploadGroup[]>([])
 const composioStatus = ref<DirectoryComposioStatus | null>(null)
 const composioConnectors = ref<DirectoryComposioConnector[]>(HARDCODED_COMPOSIO_CONNECTORS)
+const dismissedComposioSuggestionSlug = ref<string | null>(null)
 
 const dictationFeedback = ref('')
 const pendingAttachmentCount = ref(0)
@@ -660,7 +661,9 @@ const visibleComposioSuggestions = computed(() => {
   const query = getComposioSuggestionQuery(draft.value)
   if (query.length < 2) return []
   const rows = composioConnectors.value.length > 0 ? composioConnectors.value : HARDCODED_COMPOSIO_CONNECTORS
-  return rankComposioSuggestions(rows, query).slice(0, COMPOSIO_SUGGESTION_LIMIT)
+  return rankComposioSuggestions(rows, query)
+    .slice(0, COMPOSIO_SUGGESTION_LIMIT)
+    .filter((connector) => connector.slug !== dismissedComposioSuggestionSlug.value)
 })
 const skillDropdownOptions = computed(() =>
   [
@@ -1762,6 +1765,7 @@ async function refreshComposioSuggestions(force = false): Promise<void> {
 }
 
 async function applyComposioSuggestion(connector: DirectoryComposioConnector): Promise<void> {
+  dismissedComposioSuggestionSlug.value = connector.slug
   let resolvedConnector = connector
   let resolvedDetail: DirectoryComposioConnectorDetail | null = null
   if (connector.activeCount <= 0 && !connector.isNoAuth && composioStatus.value?.available && composioStatus.value.authenticated) {
@@ -2006,6 +2010,7 @@ watch([draft, selectedImages, fileAttachments, selectedSkills], () => {
 }, { deep: true })
 
 watch(draft, () => {
+  dismissedComposioSuggestionSlug.value = null
   queueComposerOverflowMeasurement()
   if (draft.value.trim().length >= 2) {
     void refreshComposioSuggestions()
