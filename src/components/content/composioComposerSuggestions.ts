@@ -78,13 +78,9 @@ function findLatestExactAliasMatch(connector: DirectoryComposioConnector, fullQu
 }
 
 function scoreComposioSuggestion(connector: DirectoryComposioConnector, fullQuery: string): number {
-  const normalizedQuery = normalizeAlias(fullQuery)
-  const matchedAlias = connectorAliases(connector)
-    .map(normalizeAlias)
-    .filter((alias) => normalizedQuery === alias || normalizedQuery.endsWith(` ${alias}`))
-    .sort((first, second) => second.length - first.length)[0]
-  if (!matchedAlias) return 0
-  let score = matchedAlias.length * 1_000
+  const latestMatch = findLatestExactAliasMatch(connector, fullQuery)
+  if (!latestMatch) return 0
+  let score = 0
   if (connector.activeCount > 0) score += 500
   else if (connector.totalConnections > 0) score += 250
   else if (connector.isNoAuth) score += 100
@@ -95,9 +91,18 @@ function scoreComposioSuggestion(connector: DirectoryComposioConnector, fullQuer
 export function rankComposioSuggestions(rows: DirectoryComposioConnector[], query: string): DirectoryComposioConnector[] {
   const fullQuery = query.trim().toLowerCase()
   if (fullQuery.length < 2) return []
-  return rows
-    .map((connector) => ({ connector, score: scoreComposioSuggestion(connector, fullQuery) }))
-    .filter((row) => row.score > 0)
+  const matched = rows
+    .map((connector) => ({
+      connector,
+      match: findLatestExactAliasMatch(connector, fullQuery),
+      score: scoreComposioSuggestion(connector, fullQuery),
+    }))
+    .filter((row): row is { connector: DirectoryComposioConnector; match: ComposioMentionMatch; score: number } => row.match !== null)
+  const latestIndex = Math.max(...matched.map((row) => row.match.index), -1)
+  const latestRows = matched.filter((row) => row.match.index === latestIndex)
+  const longestLength = Math.max(...latestRows.map((row) => row.match.length), -1)
+  return latestRows
+    .filter((row) => row.match.length === longestLength)
     .sort((first, second) => second.score - first.score || first.connector.name.localeCompare(second.connector.name))
     .map((row) => row.connector)
 }

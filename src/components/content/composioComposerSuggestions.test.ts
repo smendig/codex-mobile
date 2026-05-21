@@ -46,10 +46,13 @@ describe('rankComposioSuggestions', () => {
     const rows = [
       connector({ slug: 'gmail', name: 'Gmail', toolsCount: 10 }),
       connector({ slug: 'reddit', name: 'Reddit', toolsCount: 10 }),
+      connector({ slug: 'youtube', name: 'YouTube', toolsCount: 10 }),
     ]
     expect(rankComposioSuggestions(rows, getComposioSuggestionQuery('lets make reddit bett'))[0]?.slug).toBe('reddit')
     expect(rankComposioSuggestions(rows, getComposioSuggestionQuery('gmail reddit butt'))[0]?.slug).toBe('reddit')
     expect(rankComposioSuggestions(rows, getComposioSuggestionQuery('reddit first then GMAIL later'))[0]?.slug).toBe('gmail')
+    expect(rankComposioSuggestions(rows, getComposioSuggestionQuery('reddit asd asd'))[0]?.slug).toBe('reddit')
+    expect(rankComposioSuggestions(rows, getComposioSuggestionQuery('reddit YouTube asd asd'))[0]?.slug).toBe('youtube')
   })
 
   it('does not match connector names inside larger words', () => {

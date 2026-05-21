@@ -6244,6 +6244,7 @@ Composio connector directory uses paged loading and short-lived server caches fo
 12. After connecting YouTube, type `youtube` in the composer and click the `YouTube` suggestion; confirm the suggestion disappears immediately, then attaches `composio-youtube.md` without changing composer text and without redirecting to the Composio panel.
 13. Disable connector suggestions in settings, type a connector name, and confirm no Composio suggestion API requests are made while typing.
 14. Focus a visible connector suggestion and activate it with Enter or Space; confirm it performs one attachment/open action, not duplicate uploads.
+15. Type `reddit asd asd` and confirm the composer suggestion remains `Reddit`; then type `reddit YouTube asd asd` and confirm only `YouTube` is suggested.
 
 #### Expected Results
 - The initial connector endpoint returns 50 rows, not the full 1000-row catalog.
@@ -6255,6 +6256,7 @@ Composio connector directory uses paged loading and short-lived server caches fo
 - The clicked composer suggestion hides immediately on click so there is visible feedback while detail refresh/upload work is in progress.
 - Disabling connector suggestions prevents both visible suggestions and background Composio suggestion refresh calls.
 - Native suggestion buttons rely on their built-in keyboard click behavior and do not run duplicate Enter/Space handlers.
+- Connector suggestions scan all completed words and prefer the latest exact connector mention, not just the word before the active word.
 - Browser startup profile does not include Composio API fanout before the user opens or triggers Composio UI.
 - Light and dark themes render the paged connector list, detail modal, and loading states clearly.
 
