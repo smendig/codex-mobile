@@ -24,10 +24,6 @@ export function getComposioSuggestionQuery(value: string): string {
   return tokens.length > 1 ? tokens.slice(0, -1).join(' ') : tokens[0] ?? ''
 }
 
-export function removeComposioSuggestionQuery(value: string): string {
-  return value.replace(/(?:^|\s+)[a-z0-9][a-z0-9_-]*\s*$/iu, '')
-}
-
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
@@ -49,15 +45,6 @@ function aliasPattern(alias: string): RegExp {
     .map(escapeRegex)
     .join('[\\s_-]+')
   return new RegExp(`(^|[^a-z0-9])(${separatorAware})(?=$|[^a-z0-9])`, 'giu')
-}
-
-function normalizeAlias(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .split(/[\s_-]+/u)
-    .filter(Boolean)
-    .join(' ')
 }
 
 type ComposioMentionMatch = { index: number; length: number }
@@ -105,16 +92,6 @@ export function rankComposioSuggestions(rows: DirectoryComposioConnector[], quer
     .filter((row) => row.match.length === longestLength)
     .sort((first, second) => second.score - first.score || first.connector.name.localeCompare(second.connector.name))
     .map((row) => row.connector)
-}
-
-export function removeComposioConnectorMention(value: string, connector: DirectoryComposioConnector): string {
-  const latestMatch = findLatestExactAliasMatch(connector, value)
-  if (!latestMatch) return value
-  const before = value.slice(0, latestMatch.index).replace(/\s+$/u, '')
-  const after = value.slice(latestMatch.index + latestMatch.length).replace(/^\s+/u, '')
-  if (!before) return after
-  if (!after) return before
-  return `${before} ${after}`
 }
 
 function sanitizeComposioFilePart(value: string): string {

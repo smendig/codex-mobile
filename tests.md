@@ -386,19 +386,21 @@ Realtime Composio connector suggestions in the chat composer.
 #### Steps
 1. In light theme, focus the composer and type `reddit`.
 2. Confirm a single connector suggestion appears in the bottom controls row after Model, Skills, and Thinking.
-3. Confirm Reddit is shown and, if connected, the suggestion copy indicates it is connected.
+3. Confirm Reddit is shown and, if connected, the status icon indicates it is connected.
 4. Click the Reddit suggestion.
-5. Confirm a `composio-reddit.md` file chip is attached, the composer text remains unchanged, and no `composio-cli` skill chip is added automatically.
+5. If Reddit is connected or no-auth, confirm a `composio-reddit.md` file chip is attached, the composer text remains unchanged, and no `composio-cli` skill chip is added automatically.
 6. Clear the draft, type another connector name such as `gmail`, and confirm the matching suggestion updates while typing.
 7. Type `@` to open file mentions and confirm the Composio suggestion strip does not interfere with the file mention popup.
-8. Log out of Composio and repeat steps 1-7.
-9. Switch to dark theme and repeat steps 1-8.
+8. Log out of Composio, type `reddit`, click the suggestion, and confirm the Composio panel opens instead of mutating the composer or adding a file.
+9. Type non-connector text such as `hello world` and confirm it does not trigger Composio suggestion refresh requests.
+10. Switch to dark theme and repeat steps 1-9.
 
 #### Expected Results
 - Connector suggestions appear in realtime from normal draft text without requiring `@` syntax.
 - Matching connected connectors show connected-state emphasis.
-- After Composio logout, matching suggestions still appear from the hardcoded catalog but without connected-state emphasis.
-- Clicking a suggestion attaches connector documentation as a file and does not auto-add the `composio-cli` skill or append instruction text to the draft.
+- After Composio logout, matching suggestions still appear from the hardcoded catalog but open the Composio panel when selected.
+- Clicking a connected or no-auth suggestion attaches connector documentation as a file and does not auto-add the `composio-cli` skill or append instruction text to the draft.
+- Non-connector text does not start background Composio status or connector-list refresh work.
 - File mention behavior remains intact and takes precedence when the `@` popup is open.
 - Light theme and dark theme both render the controls-row suggestion correctly.
 
@@ -6245,6 +6247,7 @@ Composio connector directory uses paged loading and short-lived server caches fo
 13. Disable connector suggestions in settings, type a connector name, and confirm no Composio suggestion API requests are made while typing.
 14. Focus a visible connector suggestion and activate it with Enter or Space; confirm it performs one attachment/open action, not duplicate uploads.
 15. Type `reddit asd asd` and confirm the composer suggestion remains `Reddit`; then type `reddit YouTube asd asd` and confirm only `YouTube` is suggested.
+16. Type non-connector text with at least two characters and confirm the composer does not fetch live Composio status or a connector page until a local catalog connector name is present.
 
 #### Expected Results
 - The initial connector endpoint returns 50 rows, not the full 1000-row catalog.
@@ -6255,6 +6258,7 @@ Composio connector directory uses paged loading and short-lived server caches fo
 - Composer suggestion clicks force-check stale disconnected rows before deciding to open the Composio panel, so newly connected connectors attach documentation immediately.
 - The clicked composer suggestion hides immediately on click so there is visible feedback while detail refresh/upload work is in progress.
 - Disabling connector suggestions prevents both visible suggestions and background Composio suggestion refresh calls.
+- Composer suggestion hydration fetches only the first live connector page and never requests the old full 1000-row list while typing.
 - Native suggestion buttons rely on their built-in keyboard click behavior and do not run duplicate Enter/Space handlers.
 - Connector suggestions scan all completed words and prefer the latest exact connector mention, not just the word before the active word.
 - Browser startup profile does not include Composio API fanout before the user opens or triggers Composio UI.

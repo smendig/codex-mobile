@@ -6,8 +6,6 @@ import {
   getComposioSuggestionQuery,
   mergeComposioConnectors,
   rankComposioSuggestions,
-  removeComposioConnectorMention,
-  removeComposioSuggestionQuery,
 } from './composioComposerSuggestions'
 
 function connector(overrides: Partial<DirectoryComposioConnector>): DirectoryComposioConnector {
@@ -79,18 +77,6 @@ describe('getComposioSuggestionQuery', () => {
     expect(getComposioSuggestionQuery('reddit ads butt')).toBe('reddit ads')
     expect(getComposioSuggestionQuery('reddit')).toBe('reddit')
     expect(getComposioSuggestionQuery('reddit ')).toBe('reddit')
-  })
-
-  it('removes the trailing connector word after selecting a suggestion', () => {
-    expect(removeComposioSuggestionQuery('gmail calendar reddit')).toBe('gmail calendar')
-    expect(removeComposioSuggestionQuery('gmail calendar reddit ')).toBe('gmail calendar')
-    expect(removeComposioSuggestionQuery('reddit')).toBe('')
-  })
-
-  it('removes the matched connector mention instead of the last word', () => {
-    const reddit = connector({ slug: 'reddit', name: 'Reddit' })
-    expect(removeComposioConnectorMention('lets make reddit bett', reddit)).toBe('lets make bett')
-    expect(removeComposioConnectorMention('redditor reddit', reddit)).toBe('redditor')
   })
 })
 

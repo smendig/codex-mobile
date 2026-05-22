@@ -1744,10 +1744,10 @@ async function reloadPrompts(): Promise<void> {
   savedPrompts.value = await getComposerPrompts()
 }
 
-async function refreshComposioSuggestions(force = false): Promise<void> {
+async function refreshComposioSuggestions(): Promise<void> {
   if (props.composioSuggestionsEnabled === false) return
   const now = Date.now()
-  if (!force && composioLoadStartedAt > 0 && now - composioLoadStartedAt < COMPOSIO_REFRESH_INTERVAL_MS) return
+  if (composioLoadStartedAt > 0 && now - composioLoadStartedAt < COMPOSIO_REFRESH_INTERVAL_MS) return
   composioLoadStartedAt = now
   try {
     const status = await getDirectoryComposioStatus()
@@ -1756,7 +1756,7 @@ async function refreshComposioSuggestions(force = false): Promise<void> {
       composioConnectors.value = HARDCODED_COMPOSIO_CONNECTORS
       return
     }
-    const page = await listDirectoryComposioConnectors('', null, 1000)
+    const page = await listDirectoryComposioConnectors('', null, 50)
     composioConnectors.value = mergeComposioConnectors(HARDCODED_COMPOSIO_CONNECTORS, page.data)
   } catch {
     composioConnectors.value = HARDCODED_COMPOSIO_CONNECTORS
@@ -2011,7 +2011,9 @@ watch([draft, selectedImages, fileAttachments, selectedSkills], () => {
 watch(draft, () => {
   dismissedComposioSuggestionSlug.value = null
   queueComposerOverflowMeasurement()
-  if (props.composioSuggestionsEnabled !== false && draft.value.trim().length >= 2) {
+  const query = getComposioSuggestionQuery(draft.value)
+  const hasLocalComposioMatch = rankComposioSuggestions(HARDCODED_COMPOSIO_CONNECTORS, query).length > 0
+  if (props.composioSuggestionsEnabled !== false && hasLocalComposioMatch) {
     void refreshComposioSuggestions()
   }
 })
